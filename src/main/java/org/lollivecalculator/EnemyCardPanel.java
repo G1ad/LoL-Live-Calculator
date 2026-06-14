@@ -5,147 +5,171 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
+/**
+ * Displays a single enemy champion card within the dashboard.
+ * <p>
+ * Shows the champion name, level, team, computed defenses, and a list of
+ * incoming ability damage calculations. Uses {@link ThemeConfig} and
+ * {@link UIComponentFactory} for consistent styling.
+ * </p>
+ */
 public class EnemyCardPanel extends JPanel {
 
-    public EnemyCardPanel(LiveGameData.LivePlayer enemy, LiveGameData.Root liveData,
-                          LiveGameData.ChampionStats liveStats, ChampionData.Champion myStaticChamp,
-                          GameDataParser parser, CalculatorController controller) {
+    private static final ThemeConfig T = ThemeConfig.getInstance();
 
-        setBackground(new Color(22, 28, 35));
-        setBorder(BorderFactory.createLineBorder(new Color(35, 45, 55), 1));
+    /**
+     * Constructs an enemy card that renders all damage calculations.
+     *
+     * @param enemy              the enemy player from live game data
+     * @param liveData           full live game data root
+     * @param liveStats          the active player's live stats
+     * @param myStaticChamp      the active player's static champion data
+     * @param parser             game data parser (champions + items)
+     * @param controller         damage calculation pipeline
+     */
+    public EnemyCardPanel(LiveGameData.LivePlayer enemy,
+                          LiveGameData.Root liveData,
+                          LiveGameData.ChampionStats liveStats,
+                          ChampionData.Champion myStaticChamp,
+                          GameDataParser parser,
+                          CalculatorController controller) {
+
+        setBackground(T.BG_PANEL);
+        setBorder(T.CARD_BORDER);
         setLayout(new BorderLayout());
 
-        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 2, 2));
-        headerPanel.setBackground(new Color(30, 38, 48));
-        headerPanel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        // ── Header ───────────────────────────────────────────────────────
+        add(buildHeader(enemy), BorderLayout.NORTH);
 
-        JLabel lblName = new JLabel(enemy.championName);
-        lblName.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblName.setForeground(new Color(240, 244, 248));
+        // ── Body ─────────────────────────────────────────────────────────
+        JPanel body = buildBody(enemy, liveData, liveStats, myStaticChamp, parser, controller);
+        add(body, BorderLayout.CENTER);
+    }
 
-        JLabel lblDetails = new JLabel(String.format("Level %d  |  %s Team", enemy.level, enemy.team));
-        lblDetails.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblDetails.setForeground(new Color(140, 155, 170));
+    // ── Private helpers ──────────────────────────────────────────────────
 
-        headerPanel.add(lblName);
-        headerPanel.add(lblDetails);
-        add(headerPanel, BorderLayout.NORTH);
+    private JPanel buildHeader(LiveGameData.LivePlayer enemy) {
+        JPanel header = new JPanel(new GridLayout(2, 1, 2, 2));
+        header.setBackground(T.BG_HEADER);
+        header.setBorder(new EmptyBorder(T.PADDING_MEDIUM, T.PADDING_MEDIUM, T.PADDING_MEDIUM, T.PADDING_MEDIUM));
 
-        JPanel bodyPanel = new JPanel();
-        bodyPanel.setBackground(new Color(22, 28, 35));
-        bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
-        bodyPanel.setBorder(new EmptyBorder(15, 12, 15, 12));
+        header.add(UIComponentFactory.createTitle(enemy.championName));
+        header.add(UIComponentFactory.createSubtitle(
+                String.format("Level %d  |  %s Team", enemy.level, enemy.team)));
 
-        List<CalculatorController.CalculatedAbilityResult> calculations =
-                controller.computeEnemyMitigationPipeline(enemy, liveData, liveStats, myStaticChamp, parser);
+        return header;
+    }
 
-        double baseArmor = 30.0;
-        double baseMr = 30.0;
+    private JPanel buildBody(LiveGameData.LivePlayer enemy,
+                             LiveGameData.Root liveData,
+                             LiveGameData.ChampionStats liveStats,
+                             ChampionData.Champion myStaticChamp,
+                             GameDataParser parser,
+                             CalculatorController controller) {
+
+        JPanel body = new JPanel();
+        body.setBackground(T.BG_PANEL);
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.setBorder(new EmptyBorder(T.PADDING_LARGE, T.PADDING_MEDIUM, T.PADDING_LARGE, T.PADDING_MEDIUM));
+
+        // Compute effective defenses via the same pipeline used by the controller.
+        double effectiveArmor = 0;
+        double effectiveMr = 0;
+
+        // Use the same growth formula for base stats
         ChampionData.Champion enemyStatic = parser.getChampion(enemy.championName);
         if (enemyStatic != null && enemyStatic.stats != null) {
-            int n = enemy.level;
-            if (enemyStatic.stats.containsKey("armor")) {
-                baseArmor = enemyStatic.stats.get("armor").flat + (enemyStatic.stats.get("armor").perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
-            }
-            if (enemyStatic.stats.containsKey("magicResistance")) {
-                baseMr = enemyStatic.stats.get("magicResistance").flat + (enemyStatic.stats.get("magicResistance").perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
-            }
-        }
+            double baseArmor = calculateBaseStat(enemyStatic, "armor", enemy.level);
+            double baseMr = calculateBaseStat(enemyStatic, "magicResistance", enemy.level);
 
-        double bonusArmorFromItems = 0.0;
-        double bonusMrFromItems = 0.0;
-        if (enemy.items != null) {
-            for (LiveGameData.LiveItem liveItem : enemy.items) {
-                ItemData.Item staticItem = parser.getItem(liveItem.itemID);
-                if (staticItem != null && staticItem.stats != null) {
-                    if (staticItem.stats.containsKey("armor")) bonusArmorFromItems += staticItem.stats.get("armor").flat * liveItem.count;
-                    if (staticItem.stats.containsKey("magicResistance")) bonusMrFromItems += staticItem.stats.get("magicResistance").flat * liveItem.count;
+            double bonusArmor = 0;
+            double bonusMr = 0;
+            if (enemy.items != null) {
+                for (LiveGameData.LiveItem item : enemy.items) {
+                    ItemData.Item si = parser.getItem(item.itemID);
+                    if (si != null && si.stats != null) {
+                        if (si.stats.containsKey("armor"))
+                            bonusArmor += si.stats.get("armor").flat * item.count;
+                        if (si.stats.containsKey("magicResistance"))
+                            bonusMr += si.stats.get("magicResistance").flat * item.count;
+                    }
                 }
             }
+
+            effectiveArmor = DamageEngine.calculateEffectiveResistance(
+                    baseArmor + bonusArmor, "PHYSICAL", liveStats);
+            effectiveMr = DamageEngine.calculateEffectiveResistance(
+                    baseMr + bonusMr, "MAGIC", liveStats);
         }
 
-        double totalEnemyArmor = baseArmor + bonusArmorFromItems;
-        double totalEnemyMr = baseMr + bonusMrFromItems;
-        int myLevel = liveData.activePlayer != null ? liveData.activePlayer.level : 1;
-        double effectiveArmor = DamageEngine.calculateEffectiveResistance(totalEnemyArmor, "PHYSICAL", liveStats);
-        double effectiveMr = DamageEngine.calculateEffectiveResistance(totalEnemyMr, "MAGIC", liveStats);
+        // Stat summary
+        body.add(UIComponentFactory.createStatLine("Effective Armor:",
+                String.format("%.1f", effectiveArmor)));
+        body.add(UIComponentFactory.createStatLine("Effective MR:",
+                String.format("%.1f", effectiveMr)));
+        body.add(Box.createVerticalStrut(T.PADDING_LARGE));
 
-        bodyPanel.add(createStatLine("True Enemy Armor:", String.format("%.1f (Eff: %.1f)", totalEnemyArmor, effectiveArmor)));
-        bodyPanel.add(createStatLine("True Enemy MR:", String.format("%.1f (Eff: %.1f)", totalEnemyMr, effectiveMr)));
-        bodyPanel.add(Box.createVerticalStrut(15));
+        // Ability damage list
+        List<CalculatorController.CalculatedAbilityResult> calculations =
+                controller.computeEnemyMitigationPipeline(
+                        enemy, liveData, liveStats, myStaticChamp, parser);
 
-        JPanel scrollableAbilityContainer = new JPanel();
-        scrollableAbilityContainer.setBackground(new Color(22, 28, 35));
-        scrollableAbilityContainer.setLayout(new BoxLayout(scrollableAbilityContainer, BoxLayout.Y_AXIS));
+        JPanel abilityContainer = new JPanel();
+        abilityContainer.setBackground(T.BG_PANEL);
+        abilityContainer.setLayout(new BoxLayout(abilityContainer, BoxLayout.Y_AXIS));
 
         for (CalculatorController.CalculatedAbilityResult res : calculations) {
-            scrollableAbilityContainer.add(createAbilityRow(res.slot, res.name, res.rawDamage, res.mitigatedDamage));
-            scrollableAbilityContainer.add(Box.createVerticalStrut(10));
+            abilityContainer.add(buildAbilityRow(res));
+            abilityContainer.add(Box.createVerticalStrut(10));
         }
 
-        JScrollPane rowScrollPane = new JScrollPane(scrollableAbilityContainer);
-        rowScrollPane.setBorder(null);
-        rowScrollPane.setOpaque(false);
-        rowScrollPane.getViewport().setOpaque(false);
-        rowScrollPane.getVerticalScrollBar().setUnitIncrement(12);
-
-        add(bodyPanel, BorderLayout.CENTER);
-        bodyPanel.add(rowScrollPane, BorderLayout.CENTER);
+        JScrollPane scrollPane = UIComponentFactory.createScrollPane(abilityContainer);
+        body.add(scrollPane);
+        return body;
     }
 
-    private JPanel createStatLine(String label, String value) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(22, 28, 35));
-        panel.setMaximumSize(new Dimension(300, 20));
-
-        JLabel lblLabel = new JLabel(label);
-        lblLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblLabel.setForeground(new Color(140, 155, 170));
-
-        JLabel lblVal = new JLabel(value);
-        lblVal.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblVal.setForeground(new Color(255, 193, 7));
-
-        panel.add(lblLabel, BorderLayout.WEST);
-        panel.add(lblVal, BorderLayout.EAST);
-        return panel;
-    }
-
-    private JPanel createAbilityRow(String slot, String name, double rawDmg, double realDmg) {
+    /** Builds a row showing one ability's damage calculation. */
+    private JPanel buildAbilityRow(CalculatorController.CalculatedAbilityResult res) {
         JPanel panel = new JPanel(new BorderLayout(5, 2));
-        panel.setBackground(new Color(22, 28, 35));
-        panel.setMaximumSize(new Dimension(300, 48));
+        panel.setBackground(T.BG_PANEL);
+        panel.setMaximumSize(new Dimension(T.CARD_MAX_WIDTH, T.CARD_ABILITY_HEIGHT));
 
-        JLabel lblSlot = new JLabel(slot + " ");
-        lblSlot.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblSlot.setForeground(new Color(255, 193, 7));
-
-        JLabel lblName = new JLabel(name);
-        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblName.setForeground(new Color(160, 175, 190));
-
+        // Slot + name
         JPanel labelSubPanel = new JPanel(new BorderLayout());
-        labelSubPanel.setBackground(new Color(22, 28, 35));
+        labelSubPanel.setBackground(T.BG_PANEL);
+
+        JLabel lblSlot = UIComponentFactory.createLabel(
+                res.slot + " ", T.FONT_ABILITY_SLOT, T.TEXT_ACCENT);
+        JLabel lblName = UIComponentFactory.createLabel(
+                res.name, T.FONT_ABILITY_DESC, T.TEXT_ABILITY_NAME);
+
         labelSubPanel.add(lblSlot, BorderLayout.WEST);
         labelSubPanel.add(lblName, BorderLayout.CENTER);
         panel.add(labelSubPanel, BorderLayout.NORTH);
 
-        JProgressBar bar = new JProgressBar(0, 1000);
-        bar.setValue(realDmg > 0 ? (int) realDmg : 0);
-        bar.setPreferredSize(new Dimension(100, 18));
-        bar.setStringPainted(true);
-        bar.setFont(new Font("Consolas", Font.BOLD, 11));
-        bar.setForeground(new Color(180, 40, 55));
-        bar.setBackground(new Color(45, 52, 60));
-        bar.setBorder(BorderFactory.createLineBorder(new Color(60, 70, 85), 1));
-
-        if (realDmg < 0) {
+        // Damage bar
+        JProgressBar bar = T.createProgressBar();
+        if (res.mitigatedDamage > 0) {
+            bar.setValue((int) res.mitigatedDamage);
+        }
+        if (res.mitigatedDamage < 0) {
             bar.setString("-");
         } else {
-            bar.setString(String.format("Raw:%.0f → Real:%.0f", rawDmg, realDmg));
+            bar.setString(String.format("Raw:%.0f → Real:%.0f",
+                    res.rawDamage, res.mitigatedDamage));
         }
-
         panel.add(bar, BorderLayout.SOUTH);
         return panel;
+    }
+
+    /** Calculates a champion's base stat at the given level using the official growth formula. */
+    private static double calculateBaseStat(ChampionData.Champion champ, String statKey, int level) {
+        if (champ.stats != null && champ.stats.containsKey(statKey)) {
+            ChampionData.StatValue sv = champ.stats.get(statKey);
+            double levelUps = level - 1;
+            double growthFactor = levelUps * (0.7025 + 0.0175 * levelUps);
+            return sv.flat + (sv.perLevel * growthFactor);
+        }
+        return 0;
     }
 }

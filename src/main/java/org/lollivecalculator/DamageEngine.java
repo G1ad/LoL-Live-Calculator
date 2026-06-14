@@ -101,19 +101,31 @@ public class DamageEngine {
         return 60.0;
     }
 
+    /**
+     * Official LoL Wiki growth formula:
+     * Statistic = base + growth × (level - 1) × (0.7025 + 0.0175 × (level - 1))
+     * This returns the growth factor: (level - 1) × (0.7025 + 0.0175 × (level - 1))
+     */
     private static double calculateGrowthFormula(int level) {
-        double exponent = Math.pow(level, 2);
-        return ((7.0 / 400.0) * exponent) + ((267.0 / 400.0) * level) - (137.0 / 200.0);
+        double levelUps = level - 1;
+        return levelUps * (0.7025 + 0.0175 * levelUps);
     }
 
     public static double calculateEffectiveResistance(double baseResist, String damageType, LiveGameData.ChampionStats myStats) {
         double effective = baseResist;
 
         if ("PHYSICAL".equals(damageType)) {
+            // Order of operations per LoL Wiki:
+            // 1. Percentage armor penetration (applied to total armor)
+            // 2. Flat armor penetration (lethality)
+            // Note: physicalLethality and armorPenetrationFlat are the same stat in the API
             double percentPenFactor = parsePenetrationPercent(myStats.armorPenetrationPercent);
-            effective = (effective * (1.0 - percentPenFactor)) - myStats.armorPenetrationFlat - myStats.physicalLethality;
+            effective = (effective * (1.0 - percentPenFactor)) - myStats.physicalLethality;
 
         } else if ("MAGIC".equals(damageType)) {
+            // Order of operations per LoL Wiki:
+            // 1. Percentage magic penetration (applied to total MR)
+            // 2. Flat magic penetration
             double percentPenFactor = parsePenetrationPercent(myStats.magicPenetrationPercent);
             effective = (effective * (1.0 - percentPenFactor)) - myStats.magicPenetrationFlat;
         }

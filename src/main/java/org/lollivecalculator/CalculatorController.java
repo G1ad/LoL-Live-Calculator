@@ -98,11 +98,13 @@ public class CalculatorController {
     }
 
     /**
-     * Formula ufficiale Riot Games per determinare il moltiplicatore di crescita non lineare.
+     * Official LoL Wiki growth formula:
+     * Statistic = base + growth × (level - 1) × (0.7025 + 0.0175 × (level - 1))
+     * This returns the growth factor: (level - 1) × (0.7025 + 0.0175 × (level - 1))
      */
     private double calculateGrowthFormula(int level) {
-        double exponent = Math.pow(level, 2);
-        return ((7.0 / 400.0) * exponent) + ((267.0 / 400.0) * level) - (137.0 / 200.0);
+        double levelUps = level - 1;
+        return levelUps * (0.7025 + 0.0175 * levelUps);
     }
 
     /**
