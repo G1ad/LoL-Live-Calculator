@@ -3,10 +3,14 @@ package org.lollivecalculator;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
 
 public class EnemyCardPanel extends JPanel {
 
-    public EnemyCardPanel(LiveGameData.LivePlayer enemy, LiveGameData.Root liveData, LiveGameData.ChampionStats liveStats, ChampionData.Champion myStaticChamp, GameDataParser parser) {
+    public EnemyCardPanel(LiveGameData.LivePlayer enemy, LiveGameData.Root liveData,
+                          LiveGameData.ChampionStats liveStats, ChampionData.Champion myStaticChamp,
+                          GameDataParser parser, CalculatorController controller) {
+
         setBackground(new Color(22, 28, 35));
         setBorder(BorderFactory.createLineBorder(new Color(35, 45, 55), 1));
         setLayout(new BorderLayout());
@@ -32,125 +36,61 @@ public class EnemyCardPanel extends JPanel {
         bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
         bodyPanel.setBorder(new EmptyBorder(15, 12, 15, 12));
 
-        // 1. Calculate Enemy Core Base Stats (Riot's Official Non-Linear Growth Curve)
+        List<CalculatorController.CalculatedAbilityResult> calculations =
+                controller.computeEnemyMitigationPipeline(enemy, liveData, liveStats, myStaticChamp, parser);
+
         double baseArmor = 30.0;
         double baseMr = 30.0;
-
         ChampionData.Champion enemyStatic = parser.getChampion(enemy.championName);
         if (enemyStatic != null && enemyStatic.stats != null) {
             int n = enemy.level;
             if (enemyStatic.stats.containsKey("armor")) {
-                ChampionData.StatValue armorStat = enemyStatic.stats.get("armor");
-                baseArmor = armorStat.flat + (armorStat.perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
+                baseArmor = enemyStatic.stats.get("armor").flat + (enemyStatic.stats.get("armor").perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
             }
             if (enemyStatic.stats.containsKey("magicResistance")) {
-                ChampionData.StatValue mrStat = enemyStatic.stats.get("magicResistance");
-                baseMr = mrStat.flat + (mrStat.perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
+                baseMr = enemyStatic.stats.get("magicResistance").flat + (enemyStatic.stats.get("magicResistance").perLevel * (n - 1) * (0.7025 + 0.0175 * (n - 1)));
             }
         }
 
-        // 2. Scan Enemy Inventory for Additive Resistances and Plated Steelcaps
         double bonusArmorFromItems = 0.0;
         double bonusMrFromItems = 0.0;
-        boolean hasPlatedSteelcaps = false;
-
         if (enemy.items != null) {
             for (LiveGameData.LiveItem liveItem : enemy.items) {
-                if (liveItem.itemID == 3047) {
-                    hasPlatedSteelcaps = true;
-                }
-
                 ItemData.Item staticItem = parser.getItem(liveItem.itemID);
                 if (staticItem != null && staticItem.stats != null) {
-                    if (staticItem.stats.containsKey("armor")) {
-                        bonusArmorFromItems += staticItem.stats.get("armor").flat * liveItem.count;
-                    }
-                    if (staticItem.stats.containsKey("magicResistance")) {
-                        bonusMrFromItems += staticItem.stats.get("magicResistance").flat * liveItem.count;
-                    }
+                    if (staticItem.stats.containsKey("armor")) bonusArmorFromItems += staticItem.stats.get("armor").flat * liveItem.count;
+                    if (staticItem.stats.containsKey("magicResistance")) bonusMrFromItems += staticItem.stats.get("magicResistance").flat * liveItem.count;
                 }
             }
         }
 
         double totalEnemyArmor = baseArmor + bonusArmorFromItems;
         double totalEnemyMr = baseMr + bonusMrFromItems;
-
-        // 3. Compute Effective Values matching the strict LoL Wiki Order
-        double effectiveArmor = calculateEffectiveResistance(totalEnemyArmor, "PHYSICAL", liveStats);
-        double effectiveMr = calculateEffectiveResistance(totalEnemyMr, "MAGIC", liveStats);
+        int myLevel = liveData.activePlayer != null ? liveData.activePlayer.level : 1;
+        double effectiveArmor = DamageEngine.calculateEffectiveResistance(totalEnemyArmor, "PHYSICAL", liveStats);
+        double effectiveMr = DamageEngine.calculateEffectiveResistance(totalEnemyMr, "MAGIC", liveStats);
 
         bodyPanel.add(createStatLine("True Enemy Armor:", String.format("%.1f (Eff: %.1f)", totalEnemyArmor, effectiveArmor)));
         bodyPanel.add(createStatLine("True Enemy MR:", String.format("%.1f (Eff: %.1f)", totalEnemyMr, effectiveMr)));
         bodyPanel.add(Box.createVerticalStrut(15));
 
-        int myLevel = liveData.activePlayer != null ? liveData.activePlayer.level : 1;
-        String[] slots = {"Q", "W", "E", "R"};
+        JPanel scrollableAbilityContainer = new JPanel();
+        scrollableAbilityContainer.setBackground(new Color(22, 28, 35));
+        scrollableAbilityContainer.setLayout(new BoxLayout(scrollableAbilityContainer, BoxLayout.Y_AXIS));
 
-        for (String slot : slots) {
-            LiveGameData.LiveAbility liveAbility = liveData.activePlayer.abilities.get(slot);
-            java.util.List<ChampionData.Ability> staticVariants = myStaticChamp.abilities.get(slot);
-
-            double preMitigationDmg = -1.0;
-            double finalDmg = -1.0;
-            String spellName = "Not Skilled";
-
-            if (liveAbility != null && staticVariants != null && !staticVariants.isEmpty()) {
-                ChampionData.Ability variant = staticVariants.get(0);
-                spellName = variant.name;
-
-                preMitigationDmg = DamageCalculator.calculatePreMitigationDamage(variant, liveAbility.abilityLevel, liveStats, myStaticChamp, myLevel);
-
-                if (preMitigationDmg >= 0.0) {
-                    double targetedResist = variant.damageType.contains("PHYSICAL") ? effectiveArmor : effectiveMr;
-
-                    // Official Phase 2 Multiplier
-                    double multiplier = 100.0 / (100.0 + targetedResist);
-
-                    // Official Phase 3 Truncation
-                    finalDmg = Math.floor(preMitigationDmg * multiplier);
-
-                    // Steelcaps 12% Reduction applies strictly to Basic Attacks and explicitly tagged on-hit abilities (like Ezreal Q)
-                    if (hasPlatedSteelcaps && "Q".equals(slot) && variant.name.toLowerCase().contains("mystic shot")) {
-                        finalDmg = Math.floor(finalDmg * 0.88);
-                    }
-                }
-            }
-
-            bodyPanel.add(createAbilityRow(slot, spellName, preMitigationDmg, finalDmg));
-            bodyPanel.add(Box.createVerticalStrut(10));
+        for (CalculatorController.CalculatedAbilityResult res : calculations) {
+            scrollableAbilityContainer.add(createAbilityRow(res.slot, res.name, res.rawDamage, res.mitigatedDamage));
+            scrollableAbilityContainer.add(Box.createVerticalStrut(10));
         }
+
+        JScrollPane rowScrollPane = new JScrollPane(scrollableAbilityContainer);
+        rowScrollPane.setBorder(null);
+        rowScrollPane.setOpaque(false);
+        rowScrollPane.getViewport().setOpaque(false);
+        rowScrollPane.getVerticalScrollBar().setUnitIncrement(12);
 
         add(bodyPanel, BorderLayout.CENTER);
-    }
-
-    private double calculateEffectiveResistance(double baseResist, String damageType, LiveGameData.ChampionStats myStats) {
-        double effective = baseResist;
-
-        if ("PHYSICAL".equals(damageType)) {
-            // Priority 1: Percent Penetration (Multiplier Stack)
-            double percentPenFactor = myStats.armorPenetrationPercent;
-            if (percentPenFactor > 1.0) {
-                percentPenFactor /= 100.0;
-            }
-            effective = effective * (1.0 - percentPenFactor);
-
-            // Priority 2: Flat Penetration (Lethality strictly evaluated 1:1)
-            double flatPen = myStats.armorPenetrationFlat;
-            effective = effective - flatPen;
-
-        } else if ("MAGIC".equals(damageType)) {
-            // Priority 1: Percent Penetration
-            double percentPenFactor = myStats.magicPenetrationPercent;
-            if (percentPenFactor > 1.0) {
-                percentPenFactor /= 100.0;
-            }
-            effective = effective * (1.0 - percentPenFactor);
-
-            // Priority 2: Flat Penetration
-            effective = effective - myStats.magicPenetrationFlat;
-        }
-
-        return Math.max(0.0, effective);
+        bodyPanel.add(rowScrollPane, BorderLayout.CENTER);
     }
 
     private JPanel createStatLine(String label, String value) {

@@ -8,6 +8,7 @@ public class MainFrame extends JFrame {
 
     private final DataDownloader downloader;
     private final GameDataParser parser;
+    private final CalculatorController calculatorController;
     private LiveGameListener gameListener;
 
     private final JButton btnDownloadChamps;
@@ -21,9 +22,10 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         downloader = new DataDownloader();
         parser = new GameDataParser();
+        calculatorController = new CalculatorController();
 
         setTitle("League of Legends Real-Time Damage Dashboard");
-        setSize(1150, 680);
+        setSize(1250, 720);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         getContentPane().setBackground(new Color(14, 18, 22));
@@ -44,7 +46,6 @@ public class MainFrame extends JFrame {
         gridPanel = new JPanel(new GridLayout(1, 5, 15, 15));
         gridPanel.setBackground(new Color(14, 18, 22));
         gridPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
-
         showPlaceholderCards("Application initialized. Awaiting game connection.");
         add(gridPanel, BorderLayout.CENTER);
 
@@ -133,7 +134,7 @@ public class MainFrame extends JFrame {
             int enemiesAdded = 0;
             for (LiveGameData.LivePlayer player : liveData.allPlayers) {
                 if (!myTeam.equals(player.team)) {
-                    gridPanel.add(new EnemyCardPanel(player, liveData, liveStats, staticChamp, parser));
+                    gridPanel.add(new EnemyCardPanel(player, liveData, liveStats, staticChamp, parser, calculatorController));
                     enemiesAdded++;
                 }
             }
@@ -168,7 +169,6 @@ public class MainFrame extends JFrame {
                 }
             });
         });
-
         btnDownloadItems.addActionListener(e -> {
             setStatus("Downloading weapons data matrices...");
             downloader.downloadItemsAsync().thenAccept(path -> {
@@ -180,7 +180,6 @@ public class MainFrame extends JFrame {
                 }
             });
         });
-
         btnToggleLive.addActionListener(e -> {
             if (!trackingLive) {
                 setStatus("Opening tactical loop socket...");
@@ -201,7 +200,6 @@ public class MainFrame extends JFrame {
                                     }
 
                                     if (activeChampName == null) return;
-
                                     LiveGameData.ChampionStats liveStats = liveData.activePlayer.championStats;
                                     ChampionData.Champion staticChamp = parser.getChampion(activeChampName);
 

@@ -39,6 +39,7 @@ public class ChampionData {
         public String damageType;
         public String blurb;
         public String castTime;
+        public String spellEffects; // EXPOSING THIS JSON FIELD FROM THE DATASET
         public CooldownBlock cooldown;
         public List<Effect> effects;
     }

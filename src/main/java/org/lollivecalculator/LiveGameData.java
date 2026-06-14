@@ -35,6 +35,8 @@ public class LiveGameData {
         public double armorPenetrationPercent;
         public double magicPenetrationFlat;
         public double magicPenetrationPercent;
+        public double physicalLethality;
+        public double magicLethality;
         public double attackSpeed;
         public double abilityHaste;
         public double critChance;
@@ -49,6 +51,8 @@ public class LiveGameData {
         public List<LiveItem> items;
         public String summonerName;
         public String riotId;
+        public double armor;
+        public double magicResist;
     }
 
     public static class LiveItem {
