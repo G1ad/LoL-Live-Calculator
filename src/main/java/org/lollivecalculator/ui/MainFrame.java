@@ -13,24 +13,11 @@ import org.lollivecalculator.service.GameStateManager;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
-/**
- * Main application window.
- * <p>
- * Thin orchestrator that wires together all components using:
- * <ul>
- *   <li>Singleton (ThemeConfig, AppConfig) – centralized styling & config</li>
- *   <li>Factory (UIComponentFactory) – consistent component creation</li>
- *   <li>Observer (GameEventBus) – decoupled data→UI communication</li>
- *   <li>State Manager (GameStateManager) – session player identity</li>
- *   <li>Separated Panels (UIDashboardPanel) – focused responsibilities</li>
- * </ul>
- * <p>
- * Entry point is now in {@code LoLLiveCalculatorApp.main()}.
- * </p>
- */
 public class MainFrame extends JFrame {
 
     private static final ThemeConfig T = ThemeConfig.getInstance();
@@ -44,6 +31,7 @@ public class MainFrame extends JFrame {
     private JButton btnDownloadChamps;
     private JButton btnDownloadItems;
     private JButton btnToggleLive;
+    private JButton btnLoadExample;
     private JLabel lblStatus;
     private UIDashboardPanel dashboard;
 
@@ -56,6 +44,11 @@ public class MainFrame extends JFrame {
         this.calculatorController = new CalculatorController();
         this.gameStateManager = new GameStateManager();
 
+        System.out.println("══════════════════════════════════════════════");
+        System.out.println(" LoL Live Calculator  v1.0");
+        System.out.println("══════════════════════════════════════════════");
+        System.out.println(" Working directory: " + Paths.get(".").toAbsolutePath().normalize());
+
         setTitle("League of Legends Real-Time Damage Dashboard");
         setSize(T.FRAME_WIDTH, T.FRAME_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -63,48 +56,57 @@ public class MainFrame extends JFrame {
         getContentPane().setBackground(T.BG_DARK);
         setLayout(new BorderLayout(T.GAP_HORIZONTAL, T.GAP_VERTICAL));
 
-        // Build UI components directly in constructor
+        // ── Toolbar ──────────────────────────────────────────────────────
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, T.PADDING_TOOLBAR));
         toolbar.setBackground(T.BG_TOOLBAR);
 
         this.btnDownloadChamps = UIComponentFactory.createButton("Update Champions");
         this.btnDownloadItems  = UIComponentFactory.createButton("Update Items");
         this.btnToggleLive     = UIComponentFactory.createToggleLiveButton();
+        this.btnLoadExample    = UIComponentFactory.createButton("Load Example Data", new Color(70, 100, 150));
 
         toolbar.add(btnDownloadChamps);
         toolbar.add(btnDownloadItems);
         toolbar.add(btnToggleLive);
+        toolbar.add(btnLoadExample);
         add(toolbar, BorderLayout.NORTH);
 
+        // ── Dashboard ────────────────────────────────────────────────────
         this.dashboard = new UIDashboardPanel(parser, calculatorController);
         add(dashboard, BorderLayout.CENTER);
 
+        // ── Status bar ───────────────────────────────────────────────────
         JPanel statusPanel = new JPanel(new BorderLayout());
         statusPanel.setBackground(T.BG_STATUS_BAR);
         statusPanel.setBorder(new EmptyBorder(T.PADDING_SMALL, 20, T.PADDING_SMALL, 20));
 
-        this.lblStatus = UIComponentFactory.createStatusLabel("System Ready.");
+        this.lblStatus = UIComponentFactory.createStatusLabel("Initializing...");
         statusPanel.add(lblStatus, BorderLayout.WEST);
         add(statusPanel, BorderLayout.SOUTH);
 
+        // ── Wire events ──────────────────────────────────────────────────
         wireEventHandlers();
         subscribeToEventBus();
 
-        tryAutoLoadLocalData();
+        // ── Load data ────────────────────────────────────────────────────
+        tryAutoLoadData();
     }
 
     private void wireEventHandlers() {
         btnDownloadChamps.addActionListener(e -> downloadChampions());
         btnDownloadItems.addActionListener(e -> downloadItems());
         btnToggleLive.addActionListener(e -> toggleLiveTracking());
+        btnLoadExample.addActionListener(e -> loadExampleData());
     }
 
     private void subscribeToEventBus() {
         GameEventBus bus = GameEventBus.getInstance();
         bus.subscribeGameData(this::onGameDataReceived);
         bus.subscribeDisconnect(this::onTrackingDisconnected);
-        bus.subscribeStatus(this::setStatus);
+        bus.subscribeStatus(this::onStatusChanged);
     }
+
+    // ── Live data pipeline ───────────────────────────────────────────────
 
     private void onGameDataReceived(LiveGameData.Root liveData) {
         if (!gameStateManager.hasValidSession()) return;
@@ -117,118 +119,201 @@ public class MainFrame extends JFrame {
                     gameStateManager.getMyStaticChampion()
             );
 
-            GameEventBus.getInstance().publishStatus(
-                    String.format("Live Link Active | Playing: %s | Stats: AD=%.1f AP=%.1f",
-                            gameStateManager.getActiveChampionName(),
-                            gameStateManager.getLiveStats().attackDamage,
-                            gameStateManager.getLiveStats().abilityPower));
+            String msg = "Live | Playing: " + gameStateManager.getActiveChampionName()
+                    + " | AD=" + (int) gameStateManager.getLiveStats().attackDamage
+                    + " AP=" + (int) gameStateManager.getLiveStats().abilityPower;
+            GameEventBus.getInstance().publishStatus(msg);
         });
     }
 
     private void onTrackingDisconnected() {
         SwingUtilities.invokeLater(() -> {
-            dashboard.showPlaceholders("Searching for active match connection...");
-            setStatus("Searching for active match connection...");
+            dashboard.showPlaceholders("Disconnected — retrying...");
+            setStatus("Disconnected — retrying...");
         });
     }
 
+    // ── Load Example Data (no live game needed) ──────────────────────────
+
+    private void loadExampleData() {
+        setStatus("Loading example data...");
+
+        Path[] locations = {
+            Path.of("live_game_example.txt"),
+            Path.of("src/test/resources/live_game_example.json"),
+            Path.of("test-data/live_game_example.json")
+        };
+
+        Path found = null;
+        for (Path p : locations) {
+            System.out.println("   Looking for: " + p.toAbsolutePath().normalize() + " exists=" + Files.exists(p));
+            if (Files.exists(p)) { found = p; break; }
+        }
+
+        if (found == null) {
+            setStatus("File not found: live_game_example.txt — check working directory");
+            System.out.println(" [ERROR] Example data file not found!");
+            System.out.println("   Tried: " + locations[0].toAbsolutePath().normalize());
+            System.out.println("   Tried: " + locations[1].toAbsolutePath().normalize());
+            return;
+        }
+
+        try {
+            String json = Files.readString(found, StandardCharsets.UTF_8);
+            LiveGameData.Root data = parser.parseLiveGameData(json);
+            if (data == null) { setStatus("Failed to parse example JSON"); return; }
+
+            if (gameStateManager.processGameData(data, parser)) {
+                System.out.println(" ✅ Example data loaded: " + gameStateManager.getActiveChampionName()
+                    + " vs " + gameStateManager.getLiveStats().attackDamage + " AD");
+                GameEventBus.getInstance().publishGameData(data);
+            } else {
+                setStatus("Champion data not loaded — click 'Update Champions' first");
+            }
+        } catch (Exception ex) {
+            setStatus("Error: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    // ── Download ─────────────────────────────────────────────────────────
+
     private void downloadChampions() {
-        setStatus("Downloading champions framework updates...");
+        setStatus("Downloading champions...");
         downloader.downloadChampionsAsync().thenAccept(path -> {
             try {
                 parser.loadChampionsData(path);
-                setStatus("Successfully loaded " + parser.getLoadedChampionsCount() + " champions.");
+                setStatus("Loaded " + parser.getLoadedChampionsCount() + " champions");
             } catch (Exception ex) {
-                setStatus("Parsing failed: " + ex.getMessage());
+                setStatus("Parse error: " + ex.getMessage());
             }
         });
     }
 
     private void downloadItems() {
-        setStatus("Downloading weapons data matrices...");
+        setStatus("Downloading items...");
         downloader.downloadItemsAsync().thenAccept(path -> {
             try {
                 parser.loadItemsData(path);
-                setStatus("Successfully indexed global game armory files.");
+                setStatus("Loaded " + parser.getLoadedItemsCount() + " items");
             } catch (Exception ex) {
-                setStatus("Parsing failed: " + ex.getMessage());
+                setStatus("Parse error: " + ex.getMessage());
             }
         });
     }
 
+    // ── Live tracking ────────────────────────────────────────────────────
+
     private void toggleLiveTracking() {
-        if (!trackingLive) {
-            startLiveTracking();
-        } else {
-            stopLiveTracking();
-        }
+        if (!trackingLive) startLiveTracking();
+        else stopLiveTracking();
     }
 
     private void startLiveTracking() {
-        setStatus("Opening tactical loop socket...");
+        // Ensure data is loaded first
+        if (parser.getLoadedChampionsCount() == 0) {
+            setStatus("No champion data — click 'Update Champions' first");
+            return;
+        }
+
+        setStatus("Connecting to game client at " + CFG.getLolApiUrl() + " ...");
 
         gameListener = new LiveGameListener(
-                jsonPayload -> {
+                json -> {
                     try {
-                        LiveGameData.Root liveData = parser.parseLiveGameData(jsonPayload);
-                        if (liveData != null && gameStateManager.processGameData(liveData, parser)) {
-                            GameEventBus.getInstance().publishGameData(liveData);
+                        LiveGameData.Root data = parser.parseLiveGameData(json);
+                        if (data != null && gameStateManager.processGameData(data, parser)) {
+                            GameEventBus.getInstance().publishGameData(data);
                         }
                     } catch (Exception ex) {
-                        setStatus("Dashboard calculation gap: " + ex.getMessage());
+                        setStatus("Parse error: " + ex.getMessage());
                     }
                 },
-                errorMsg -> GameEventBus.getInstance().publishDisconnect()
+                err -> GameEventBus.getInstance().publishDisconnect()
         );
 
         gameListener.startListening();
-        btnToggleLive.setText("Disconnect Radar");
+        btnToggleLive.setText("Disconnect");
         btnToggleLive.setBackground(T.RED_DANGER);
         trackingLive = true;
     }
 
     private void stopLiveTracking() {
         gameListener.stopListening();
-        // Clear stale session state so reconnection starts fresh
         gameStateManager.reset();
 
         btnToggleLive.setText("Start Live Tracking");
         btnToggleLive.setBackground(T.GREEN_ACTIVE);
         trackingLive = false;
-        dashboard.showPlaceholders("Radar offline.");
-        setStatus("Live tracking suspended.");
+        dashboard.showPlaceholders("Tracking stopped");
+        setStatus("Live tracking stopped");
     }
 
-    private void setStatus(String text) {
+    private void onStatusChanged(String text) {
         SwingUtilities.invokeLater(() -> lblStatus.setText(text));
     }
 
-    private void tryAutoLoadLocalData() {
-        // Try the configured path first (e.g. data/champions.json),
-        // fall back to the legacy root path (champions.json)
-        Path champPath = CFG.getChampionsLocalPath();
-        if (!Files.exists(champPath)) {
-            champPath = Path.of("champions.json");
-        }
-        if (Files.exists(champPath)) {
-            try {
-                parser.loadChampionsData(champPath);
-                setStatus("Loaded " + parser.getLoadedChampionsCount() + " champions from " + champPath.getFileName());
-            } catch (Exception e) {
-                setStatus("Failed to load champions: " + e.getMessage());
-            }
-        } else {
-            setStatus("No champion data found. Click 'Update Champions' to download.");
+    private void setStatus(String text) {
+        System.out.println(" [STATUS] " + text);
+        SwingUtilities.invokeLater(() -> lblStatus.setText(text));
+    }
+
+    // ── Auto-load champions.json and items.json on startup ───────────────
+    //     Checks multiple locations in order, prints what it found
+
+    private void tryAutoLoadData() {
+        boolean loaded = tryLoadChampions();
+
+        if (!loaded) {
+            setStatus("No data found — click 'Update Champions' or 'Load Example Data'");
+            System.out.println(" ⚠️  Champions data could not be loaded automatically.");
         }
 
-        Path itemPath = CFG.getItemsLocalPath();
-        if (!Files.exists(itemPath)) {
-            itemPath = Path.of("items.json");
+        // Items are optional
+        tryLoadItems();
+    }
+
+    private boolean tryLoadChampions() {
+        Path[] paths = {
+            CFG.getChampionsLocalPath(),          // data/champions.json
+            Path.of("data", "champions.json"),    // explicit data/champions.json
+            Path.of("champions.json")             // root
+        };
+
+        for (Path p : paths) {
+            if (Files.exists(p)) {
+                try {
+                    parser.loadChampionsData(p);
+                    String msg = "Loaded " + parser.getLoadedChampionsCount() + " champions from " + p.getFileName();
+                    setStatus(msg);
+                    System.out.println(" ✅ " + msg);
+                    System.out.println("   Path: " + p.toAbsolutePath().normalize());
+                    return true;
+                } catch (Exception e) {
+                    System.out.println(" ⚠️  Found " + p.getFileName() + " but failed to parse: " + e.getMessage());
+                }
+            } else {
+                System.out.println("   Not found: " + p.toAbsolutePath().normalize());
+            }
         }
-        if (Files.exists(itemPath)) {
-            try {
-                parser.loadItemsData(itemPath);
-            } catch (Exception ignored) { /* optional */ }
+        return false;
+    }
+
+    private void tryLoadItems() {
+        Path[] paths = {
+            CFG.getItemsLocalPath(),          // data/items.json
+            Path.of("data", "items.json"),    // explicit data/items.json
+            Path.of("items.json")             // root
+        };
+
+        for (Path p : paths) {
+            if (Files.exists(p)) {
+                try {
+                    parser.loadItemsData(p);
+                    System.out.println(" ✅ Loaded " + parser.getLoadedItemsCount() + " items from " + p.getFileName());
+                    return;
+                } catch (Exception ignored) { }
+            }
         }
     }
 }

@@ -1,5 +1,8 @@
 package org.lollivecalculator.config;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -7,9 +10,12 @@ import java.util.Properties;
 /**
  * Centralized application configuration.
  * <p>
- * Singleton that loads from {@code config.properties} if it exists on the
- * classpath, or falls back to sensible defaults. All hardcoded URLs, paths,
- * ports and tunables live here.
+ * Singleton that loads from {@code config.properties} in this order:
+ * <ol>
+ *   <li>Classpath resource {@code /config.properties} (works when running via Maven)</li>
+ *   <li>File system path {@code config.properties} (works when running as packaged JAR)</li>
+ *   <li>Hardcoded defaults (always works)</li>
+ * </ol>
  * </p>
  */
 public final class AppConfig {
@@ -40,17 +46,13 @@ public final class AppConfig {
     private final boolean enableAnsiColors;
 
     private AppConfig() {
-        Properties props = new Properties();
-        try (var is = getClass().getClassLoader().getResourceAsStream("config.properties")) {
-            if (is != null) {
-                props.load(is);
-            }
-        } catch (Exception ignored) { /* use defaults */ }
+        Properties props = loadProperties();
 
         // ── LoL API ──────────────────────────────────────────────────────
         this.lolApiHost         = props.getProperty("lol.api.host", "127.0.0.1");
         this.lolApiPort         = parseInt(props.getProperty("lol.api.port", "2999"), 2999);
-        this.lolApiLiveGamePath = props.getProperty("lol.api.livegame.path", "/liveclientdata/allgamedata");
+        this.lolApiLiveGamePath = props.getProperty("lol.api.livegame.path",
+                "/liveclientdata/allgamedata");
 
         // ── Data sources ─────────────────────────────────────────────────
         this.championsUrl = props.getProperty("data.champions.url",
@@ -58,7 +60,7 @@ public final class AppConfig {
         this.itemsUrl = props.getProperty("data.items.url",
                 "http://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json");
 
-        // ── Local files ───────────────────────────────────────────────────
+        // ── Local files ──────────────────────────────────────────────────
         this.localDataDir       = props.getProperty("data.local.dir", "data");
         this.localChampionsFile = props.getProperty("data.local.champions", "champions.json");
         this.localItemsFile     = props.getProperty("data.local.items", "items.json");
@@ -71,6 +73,43 @@ public final class AppConfig {
         // ── Logging ──────────────────────────────────────────────────────
         this.verboseLogging  = Boolean.parseBoolean(props.getProperty("log.verbose", "true"));
         this.enableAnsiColors = Boolean.parseBoolean(props.getProperty("log.ansi", "true"));
+    }
+
+    /**
+     * Tries to load config.properties from:
+     * 1. Classpath (works with Maven: mvn compile exec:java)
+     * 2. File system (works with: java -jar app.jar)
+     * Falls back to empty properties (all defaults).
+     */
+    private static Properties loadProperties() {
+        Properties props = new Properties();
+
+        // Try classpath first (src/main/resources/config.properties → target/classes/config.properties)
+        try (InputStream is = AppConfig.class.getClassLoader()
+                .getResourceAsStream("config.properties")) {
+            if (is != null) {
+                props.load(is);
+                System.out.println(" [AppConfig] Loaded config.properties from classpath");
+                return props;
+            }
+        } catch (Exception ignored) {
+            // Fall through to file system attempt
+        }
+
+        // Try file system (same directory as working dir)
+        Path fsPath = Paths.get("config.properties");
+        if (Files.exists(fsPath)) {
+            try (InputStream is = Files.newInputStream(fsPath)) {
+                props.load(is);
+                System.out.println(" [AppConfig] Loaded config.properties from " + fsPath.toAbsolutePath());
+                return props;
+            } catch (IOException ignored) {
+                // Fall through to defaults
+            }
+        }
+
+        System.out.println(" [AppConfig] No config.properties found, using defaults");
+        return props;
     }
 
     public static AppConfig getInstance() {
@@ -86,7 +125,9 @@ public final class AppConfig {
     public String getChampionsUrl()        { return championsUrl; }
     public String getItemsUrl()            { return itemsUrl; }
 
+    /** Returns the primary path: data/champions.json */
     public Path getChampionsLocalPath()    { return Paths.get(localDataDir, localChampionsFile); }
+    /** Returns the primary path: data/items.json */
     public Path getItemsLocalPath()        { return Paths.get(localDataDir, localItemsFile); }
     public String getLocalDataDir()        { return localDataDir; }
 
