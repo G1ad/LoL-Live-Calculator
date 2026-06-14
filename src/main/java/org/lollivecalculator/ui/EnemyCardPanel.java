@@ -2,7 +2,6 @@ package org.lollivecalculator.ui;
 
 import org.lollivecalculator.config.ThemeConfig;
 import org.lollivecalculator.model.ChampionData;
-import org.lollivecalculator.model.ItemData;
 import org.lollivecalculator.model.LiveGameData;
 import org.lollivecalculator.service.CalculatorController;
 import org.lollivecalculator.service.DamageEngine;
@@ -15,6 +14,10 @@ import java.util.List;
 
 /**
  * Displays a single enemy champion card within the dashboard.
+ * <p>
+ * Uses {@link CalculatorController#parseEnemyInventory} to avoid duplicating
+ * the item-scanning logic — the controller already computes these values.
+ * </p>
  */
 public class EnemyCardPanel extends JPanel {
 
@@ -58,33 +61,23 @@ public class EnemyCardPanel extends JPanel {
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBorder(new EmptyBorder(T.PADDING_LARGE, T.PADDING_MEDIUM, T.PADDING_LARGE, T.PADDING_MEDIUM));
 
-        double effectiveArmor = 0;
-        double effectiveMr = 0;
-
+        // Use CalculatorController's static helper to avoid duplicating item logic
         ChampionData.Champion enemyStatic = parser.getChampion(enemy.championName);
+        CalculatorController.InventoryStats inventory = new CalculatorController.InventoryStats();
+
+        double baseArmor = 0;
+        double baseMr = 0;
+
         if (enemyStatic != null && enemyStatic.stats != null) {
-            double baseArmor = calculateBaseStat(enemyStatic, "armor", enemy.level);
-            double baseMr = calculateBaseStat(enemyStatic, "magicResistance", enemy.level);
-
-            double bonusArmor = 0;
-            double bonusMr = 0;
-            if (enemy.items != null) {
-                for (LiveGameData.LiveItem item : enemy.items) {
-                    ItemData.Item si = parser.getItem(item.itemID);
-                    if (si != null && si.stats != null) {
-                        if (si.stats.containsKey("armor"))
-                            bonusArmor += si.stats.get("armor").flat * item.count;
-                        if (si.stats.containsKey("magicResistance"))
-                            bonusMr += si.stats.get("magicResistance").flat * item.count;
-                    }
-                }
-            }
-
-            effectiveArmor = DamageEngine.calculateEffectiveResistance(
-                    baseArmor + bonusArmor, "PHYSICAL", liveStats);
-            effectiveMr = DamageEngine.calculateEffectiveResistance(
-                    baseMr + bonusMr, "MAGIC", liveStats);
+            baseArmor = calculateBaseStat(enemyStatic, "armor", enemy.level);
+            baseMr = calculateBaseStat(enemyStatic, "magicResistance", enemy.level);
+            inventory = CalculatorController.parseEnemyInventory(enemy, parser);
         }
+
+        double effectiveArmor = DamageEngine.calculateEffectiveResistance(
+                baseArmor + inventory.bonusArmor, "PHYSICAL", liveStats);
+        double effectiveMr = DamageEngine.calculateEffectiveResistance(
+                baseMr + inventory.bonusMr, "MAGIC", liveStats);
 
         body.add(UIComponentFactory.createStatLine("Effective Armor:",
                 String.format("%.1f", effectiveArmor)));

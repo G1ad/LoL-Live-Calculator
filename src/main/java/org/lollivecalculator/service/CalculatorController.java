@@ -84,7 +84,11 @@ public class CalculatorController {
         return 30.0;
     }
 
-    private InventoryStats parseEnemyInventory(LiveGameData.LivePlayer enemy, GameDataParser parser) {
+    /**
+     * Exposed as package-private so that UI panels can retrieve the same
+     * computed defenses without duplicating the item-scanning logic.
+     */
+    public static InventoryStats parseEnemyInventory(LiveGameData.LivePlayer enemy, GameDataParser parser) {
         InventoryStats inv = new InventoryStats();
         if (enemy.items == null) return inv;
 
@@ -155,9 +159,9 @@ public class CalculatorController {
         }
     }
 
-    private static class InventoryStats {
-        double bonusArmor = 0.0;
-        double bonusMr = 0.0;
-        boolean hasPlatedSteelcaps = false;
+    public static class InventoryStats {
+        public double bonusArmor = 0.0;
+        public double bonusMr = 0.0;
+        public boolean hasPlatedSteelcaps = false;
     }
 }

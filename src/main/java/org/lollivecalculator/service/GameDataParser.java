@@ -6,9 +6,10 @@ import org.lollivecalculator.model.ChampionData;
 import org.lollivecalculator.model.ItemData;
 import org.lollivecalculator.model.LiveGameData;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,22 +26,28 @@ public class GameDataParser {
     }
 
     public void loadChampionsData(String filePath) throws IOException {
-        Path path = Paths.get(filePath);
+        loadChampionsData(Paths.get(filePath));
+    }
+
+    public void loadChampionsData(Path path) throws IOException {
         if (!Files.exists(path)) {
             throw new IOException("Data file not found at: " + path.toAbsolutePath());
         }
-        try (FileReader reader = new FileReader(filePath)) {
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             Type mapType = new TypeToken<Map<String, ChampionData.Champion>>() {}.getType();
             championMap = gson.fromJson(reader, mapType);
         }
     }
 
     public void loadItemsData(String filePath) throws IOException {
-        Path path = Paths.get(filePath);
+        loadItemsData(Paths.get(filePath));
+    }
+
+    public void loadItemsData(Path path) throws IOException {
         if (!Files.exists(path)) {
             throw new IOException("Data file not found at: " + path.toAbsolutePath());
         }
-        try (FileReader reader = new FileReader(filePath)) {
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             Type mapType = new TypeToken<Map<String, ItemData.Item>>() {}.getType();
             itemMap = gson.fromJson(reader, mapType);
         }

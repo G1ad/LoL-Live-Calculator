@@ -1,17 +1,19 @@
 package org.lollivecalculator.network;
 
+import org.lollivecalculator.config.AppConfig;
+
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 
 public class DataDownloader {
 
-    private static final String CHAMPIONS_URL = "http://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json";
-    private static final String ITEMS_URL = "http://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json";
+    private static final AppConfig CFG = AppConfig.getInstance();
 
     private final HttpClient httpClient;
 
@@ -21,29 +23,39 @@ public class DataDownloader {
                 .build();
     }
 
-    public CompletableFuture<Path> downloadJsonAsync(String urlString, String targetFilename) {
+    /**
+     * Downloads a JSON file and saves it to the configured data directory,
+     * creating the directory if necessary.
+     */
+    public CompletableFuture<Path> downloadJsonAsync(String urlString, Path outputPath) {
+        // Ensure the parent directory exists
+        try {
+            Files.createDirectories(outputPath.getParent());
+        } catch (IOException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(urlString))
                 .GET()
                 .build();
-
-        Path outputPath = Paths.get(targetFilename);
 
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofFile(outputPath))
                 .thenApply(response -> {
                     if (response.statusCode() == 200) {
                         return response.body();
                     } else {
-                        throw new RuntimeException("Failed to download file. HTTP Status: " + response.statusCode());
+                        throw new RuntimeException(
+                                "Failed to download " + urlString + " — HTTP " + response.statusCode());
                     }
                 });
     }
 
     public CompletableFuture<Path> downloadChampionsAsync() {
-        return downloadJsonAsync(CHAMPIONS_URL, "champions.json");
+        return downloadJsonAsync(CFG.getChampionsUrl(), CFG.getChampionsLocalPath());
     }
 
     public CompletableFuture<Path> downloadItemsAsync() {
-        return downloadJsonAsync(ITEMS_URL, "items.json");
+        return downloadJsonAsync(CFG.getItemsUrl(), CFG.getItemsLocalPath());
     }
 }

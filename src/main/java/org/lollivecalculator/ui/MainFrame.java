@@ -1,8 +1,8 @@
 package org.lollivecalculator.ui;
 
+import org.lollivecalculator.config.AppConfig;
 import org.lollivecalculator.config.ThemeConfig;
 import org.lollivecalculator.event.GameEventBus;
-import org.lollivecalculator.model.ChampionData;
 import org.lollivecalculator.model.LiveGameData;
 import org.lollivecalculator.network.DataDownloader;
 import org.lollivecalculator.network.LiveGameListener;
@@ -15,23 +15,26 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Main application window.
  * <p>
  * Thin orchestrator that wires together all components using:
  * <ul>
- *   <li>Singleton (ThemeConfig) – centralized styling</li>
+ *   <li>Singleton (ThemeConfig, AppConfig) – centralized styling & config</li>
  *   <li>Factory (UIComponentFactory) – consistent component creation</li>
  *   <li>Observer (GameEventBus) – decoupled data→UI communication</li>
  *   <li>State Manager (GameStateManager) – session player identity</li>
  *   <li>Separated Panels (UIDashboardPanel) – focused responsibilities</li>
  * </ul>
+ * <p>
+ * Entry point is now in {@code LoLLiveCalculatorApp.main()}.
+ * </p>
  */
 public class MainFrame extends JFrame {
 
     private static final ThemeConfig T = ThemeConfig.getInstance();
+    private static final AppConfig CFG = AppConfig.getInstance();
 
     private final DataDownloader downloader;
     private final GameDataParser parser;
@@ -60,14 +63,12 @@ public class MainFrame extends JFrame {
         getContentPane().setBackground(T.BG_DARK);
         setLayout(new BorderLayout(T.GAP_HORIZONTAL, T.GAP_VERTICAL));
 
-        JPanel toolbar = buildToolbar();
-        add(toolbar, BorderLayout.NORTH);
+        add(buildToolbar(), BorderLayout.NORTH);
 
         this.dashboard = new UIDashboardPanel(parser, calculatorController);
         add(dashboard, BorderLayout.CENTER);
 
-        JPanel statusPanel = buildStatusBar();
-        add(statusPanel, BorderLayout.SOUTH);
+        add(buildStatusBar(), BorderLayout.SOUTH);
 
         wireEventHandlers();
         subscribeToEventBus();
@@ -142,7 +143,7 @@ public class MainFrame extends JFrame {
         setStatus("Downloading champions framework updates...");
         downloader.downloadChampionsAsync().thenAccept(path -> {
             try {
-                parser.loadChampionsData(path.toString());
+                parser.loadChampionsData(path);
                 setStatus("Successfully loaded " + parser.getLoadedChampionsCount() + " champions.");
             } catch (Exception ex) {
                 setStatus("Parsing failed: " + ex.getMessage());
@@ -154,7 +155,7 @@ public class MainFrame extends JFrame {
         setStatus("Downloading weapons data matrices...");
         downloader.downloadItemsAsync().thenAccept(path -> {
             try {
-                parser.loadItemsData(path.toString());
+                parser.loadItemsData(path);
                 setStatus("Successfully indexed global game armory files.");
             } catch (Exception ex) {
                 setStatus("Parsing failed: " + ex.getMessage());
@@ -195,6 +196,9 @@ public class MainFrame extends JFrame {
 
     private void stopLiveTracking() {
         gameListener.stopListening();
+        // Clear stale session state so reconnection starts fresh
+        gameStateManager.reset();
+
         btnToggleLive.setText("Start Live Tracking");
         btnToggleLive.setBackground(T.GREEN_ACTIVE);
         trackingLive = false;
@@ -207,29 +211,20 @@ public class MainFrame extends JFrame {
     }
 
     private void tryAutoLoadLocalData() {
-        Path champPath = Paths.get("champions.json");
+        Path champPath = CFG.getChampionsLocalPath();
         if (Files.exists(champPath)) {
             try {
-                parser.loadChampionsData(champPath.toString());
+                parser.loadChampionsData(champPath);
                 setStatus("Auto-loaded data for " + parser.getLoadedChampionsCount() + " champions.");
             } catch (Exception e) {
                 setStatus("Failed to auto-load champions: " + e.getMessage());
             }
         }
-        Path itemPath = Paths.get("items.json");
+        Path itemPath = CFG.getItemsLocalPath();
         if (Files.exists(itemPath)) {
             try {
-                parser.loadItemsData(itemPath.toString());
-            } catch (Exception ignored) { }
+                parser.loadItemsData(itemPath);
+            } catch (Exception ignored) { /* optional, will load later */ }
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) { }
-            new MainFrame().setVisible(true);
-        });
     }
 }

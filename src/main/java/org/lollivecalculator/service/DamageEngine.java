@@ -5,8 +5,61 @@ import org.lollivecalculator.model.LiveGameData;
 
 import java.util.List;
 
-public class DamageEngine {
+/**
+ * Default implementation of {@link IDamageEngine}.
+ * <p>
+ * Static methods (`calculatePreMitigationDamage`, etc.) are the primary
+ * API used by {@link CalculatorController}. The class also implements
+ * {@link IDamageEngine} for testability / interface-based access.
+ * </p>
+ */
+public final class DamageEngine implements IDamageEngine {
 
+    private static final DamageEngine INSTANCE = new DamageEngine();
+
+    private DamageEngine() { }
+
+    /** Returns the singleton instance for interface-based access. */
+    public static IDamageEngine getInstance() {
+        return INSTANCE;
+    }
+
+    // ── IDamageEngine interface ──────────────────────────────────────────
+
+    @Override
+    public double calculatePreMitigationDamage(
+            ChampionData.Effect specificEffect,
+            int liveAbilityLevel,
+            LiveGameData.ChampionStats liveStats,
+            ChampionData.Champion myStaticChamp,
+            int myLevel) {
+        return calculatePreMitigationDamage(specificEffect, liveAbilityLevel, liveStats, myStaticChamp, myLevel);
+    }
+
+    @Override
+    public double calculateEffectiveResistance(double baseResist, String damageType, LiveGameData.ChampionStats myStats) {
+        return calculateEffectiveResistance(baseResist, damageType, myStats);
+    }
+
+    @Override
+    public double calculatePostMitigationDamage(double preMitigationDmg, double effectiveResist) {
+        return calculatePostMitigationDamage(preMitigationDmg, effectiveResist);
+    }
+
+    @Override
+    public double calculateGrowthFormula(int level) {
+        return calculateGrowthFormula(level);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  PUBLIC STATIC API  (called by CalculatorController, EnemyCardPanel)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Computes the total raw damage (pre-mitigation) for a single ability effect.
+     *
+     * @return raw damage value (truncated to int), or negative if not available
+     */
     public static double calculatePreMitigationDamage(
             ChampionData.Effect specificEffect,
             int liveAbilityLevel,
@@ -28,8 +81,57 @@ public class DamageEngine {
 
         if (!accumulator.hasCalculatedStats) return -1.0;
 
-        return Math.floor(accumulator.baseDamage + accumulator.scalingDamage);
+        // Truncate to match Riot's in-game display
+        return truncate(accumulator.baseDamage + accumulator.scalingDamage);
     }
+
+    /**
+     * Applies penetration/lethality to a resistance value.
+     *
+     * @param baseResist total resistance (base + items)
+     * @param damageType "PHYSICAL" or "MAGIC"
+     * @param myStats    attacker's live stats (penetration values)
+     * @return effective resistance after penetration (minimum 0)
+     */
+    public static double calculateEffectiveResistance(
+            double baseResist,
+            String damageType,
+            LiveGameData.ChampionStats myStats) {
+
+        double effective = baseResist;
+
+        if ("PHYSICAL".equals(damageType)) {
+            double percentPenFactor = parsePenetrationPercent(myStats.armorPenetrationPercent);
+            effective = (effective * (1.0 - percentPenFactor)) - myStats.physicalLethality;
+        } else if ("MAGIC".equals(damageType)) {
+            double percentPenFactor = parsePenetrationPercent(myStats.magicPenetrationPercent);
+            effective = (effective * (1.0 - percentPenFactor)) - myStats.magicPenetrationFlat;
+        }
+
+        return Math.max(0.0, effective);
+    }
+
+    /**
+     * Post-mitigation damage using Riot's truncation to match in-game display.
+     */
+    public static double calculatePostMitigationDamage(double preMitigationDmg, double effectiveResist) {
+        if (preMitigationDmg < 0) return -1.0;
+        double multiplier = 100.0 / (100.0 + effectiveResist);
+        return truncate(preMitigationDmg * multiplier);
+    }
+
+    /**
+     * Official LoL Wiki growth formula:
+     * (level - 1) × (0.7025 + 0.0175 × (level - 1))
+     */
+    public static double calculateGrowthFormula(int level) {
+        double levelUps = level - 1;
+        return levelUps * (0.7025 + 0.0175 * levelUps);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  PRIVATE HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
 
     private static void processModifierGroups(
             List<ChampionData.ModifierGroup> modifiers,
@@ -96,30 +198,6 @@ public class DamageEngine {
         return 60.0;
     }
 
-    /**
-     * Official LoL Wiki growth formula:
-     * Statistic = base + growth × (level - 1) × (0.7025 + 0.0175 × (level - 1))
-     */
-    public static double calculateGrowthFormula(int level) {
-        double levelUps = level - 1;
-        return levelUps * (0.7025 + 0.0175 * levelUps);
-    }
-
-    public static double calculateEffectiveResistance(double baseResist, String damageType, LiveGameData.ChampionStats myStats) {
-        double effective = baseResist;
-
-        if ("PHYSICAL".equals(damageType)) {
-            double percentPenFactor = parsePenetrationPercent(myStats.armorPenetrationPercent);
-            effective = (effective * (1.0 - percentPenFactor)) - myStats.physicalLethality;
-
-        } else if ("MAGIC".equals(damageType)) {
-            double percentPenFactor = parsePenetrationPercent(myStats.magicPenetrationPercent);
-            effective = (effective * (1.0 - percentPenFactor)) - myStats.magicPenetrationFlat;
-        }
-
-        return Math.max(0.0, effective);
-    }
-
     private static double parsePenetrationPercent(double rawPercent) {
         if (rawPercent == 1.0) {
             return 0.0;
@@ -127,11 +205,12 @@ public class DamageEngine {
         return rawPercent > 1.0 ? rawPercent / 100.0 : rawPercent;
     }
 
-    public static double calculatePostMitigationDamage(double preMitigationDmg, double effectiveResist) {
-        if (preMitigationDmg < 0) return -1.0;
-        double multiplier = 100.0 / (100.0 + effectiveResist);
-        return Math.floor(preMitigationDmg * multiplier);
+    /** Truncates toward zero (Riot convention). */
+    private static double truncate(double value) {
+        return (double) (int) value;
     }
+
+    // ── DamageAccumulator ────────────────────────────────────────────────
 
     private static class DamageAccumulator {
         double baseDamage = 0.0;

@@ -18,6 +18,14 @@ public final class GameStateManager {
     private String myTeam;
     private ChampionData.Champion myStaticChampion;
 
+    /** Resets all state — call when disconnecting from a match. */
+    public void reset() {
+        this.currentData = null;
+        this.activeChampionName = null;
+        this.myTeam = null;
+        this.myStaticChampion = null;
+    }
+
     /**
      * Process raw game data and resolve the active player's identity.
      *
@@ -57,21 +65,10 @@ public final class GameStateManager {
 
     // ── Getters ──────────────────────────────────────────────────────────
 
-    public LiveGameData.Root getCurrentData() {
-        return currentData;
-    }
-
-    public String getActiveChampionName() {
-        return activeChampionName;
-    }
-
-    public String getMyTeam() {
-        return myTeam;
-    }
-
-    public ChampionData.Champion getMyStaticChampion() {
-        return myStaticChampion;
-    }
+    public LiveGameData.Root getCurrentData() { return currentData; }
+    public String getActiveChampionName()     { return activeChampionName; }
+    public String getMyTeam()                 { return myTeam; }
+    public ChampionData.Champion getMyStaticChampion() { return myStaticChampion; }
 
     public LiveGameData.ChampionStats getLiveStats() {
         return currentData != null ? currentData.activePlayer.championStats : null;
