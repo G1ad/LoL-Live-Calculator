@@ -1,4 +1,4 @@
-package org.lollivecalculator;
+package org.lollivecalculator.network;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,7 +29,6 @@ public class DataDownloader {
 
         Path outputPath = Paths.get(targetFilename);
 
-        // Send async request and pipe the body directly to a file stream
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofFile(outputPath))
                 .thenApply(response -> {
                     if (response.statusCode() == 200) {

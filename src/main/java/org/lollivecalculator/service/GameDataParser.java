@@ -1,7 +1,11 @@
-package org.lollivecalculator;
+package org.lollivecalculator.service;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.ItemData;
+import org.lollivecalculator.model.LiveGameData;
+
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Type;

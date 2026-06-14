@@ -1,4 +1,14 @@
-package org.lollivecalculator;
+package org.lollivecalculator.ui;
+
+import org.lollivecalculator.config.ThemeConfig;
+import org.lollivecalculator.event.GameEventBus;
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.LiveGameData;
+import org.lollivecalculator.network.DataDownloader;
+import org.lollivecalculator.network.LiveGameListener;
+import org.lollivecalculator.service.CalculatorController;
+import org.lollivecalculator.service.GameDataParser;
+import org.lollivecalculator.service.GameStateManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -10,48 +20,39 @@ import java.nio.file.Paths;
 /**
  * Main application window.
  * <p>
- * Acts as a thin orchestrator that wires together the application's
- * components using established design patterns:
+ * Thin orchestrator that wires together all components using:
  * <ul>
- *   <li><b>Singleton ({@link ThemeConfig})</b> – centralized styling constants</li>
- *   <li><b>Factory ({@link UIComponentFactory})</b> – consistent component creation</li>
- *   <li><b>Observer ({@link GameEventBus})</b> – decoupled data→UI communication</li>
- *   <li><b>State Manager ({@link GameStateManager})</b> – session player identity</li>
- *   <li><b>Separated Panels ({@link UIDashboardPanel})</b> – focused responsibilities</li>
+ *   <li>Singleton (ThemeConfig) – centralized styling</li>
+ *   <li>Factory (UIComponentFactory) – consistent component creation</li>
+ *   <li>Observer (GameEventBus) – decoupled data→UI communication</li>
+ *   <li>State Manager (GameStateManager) – session player identity</li>
+ *   <li>Separated Panels (UIDashboardPanel) – focused responsibilities</li>
  * </ul>
- * </p>
  */
 public class MainFrame extends JFrame {
 
     private static final ThemeConfig T = ThemeConfig.getInstance();
 
-    // ── Core dependencies ────────────────────────────────────────────────
     private final DataDownloader downloader;
     private final GameDataParser parser;
     private final CalculatorController calculatorController;
     private final GameStateManager gameStateManager;
 
-    // ── UI components (created via factories, owned by this frame) ───────
     private final JButton btnDownloadChamps;
     private final JButton btnDownloadItems;
     private final JButton btnToggleLive;
     private final JLabel lblStatus;
     private final UIDashboardPanel dashboard;
 
-    // ── State ────────────────────────────────────────────────────────────
     private LiveGameListener gameListener;
     private boolean trackingLive = false;
 
-    // ── Construction ─────────────────────────────────────────────────────
-
     public MainFrame() {
-        // Domain dependencies
         this.downloader = new DataDownloader();
         this.parser = new GameDataParser();
         this.calculatorController = new CalculatorController();
         this.gameStateManager = new GameStateManager();
 
-        // ── Frame setup ──────────────────────────────────────────────────
         setTitle("League of Legends Real-Time Damage Dashboard");
         setSize(T.FRAME_WIDTH, T.FRAME_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -59,27 +60,20 @@ public class MainFrame extends JFrame {
         getContentPane().setBackground(T.BG_DARK);
         setLayout(new BorderLayout(T.GAP_HORIZONTAL, T.GAP_VERTICAL));
 
-        // ── Top toolbar ──────────────────────────────────────────────────
         JPanel toolbar = buildToolbar();
         add(toolbar, BorderLayout.NORTH);
 
-        // ── Center dashboard ─────────────────────────────────────────────
         this.dashboard = new UIDashboardPanel(parser, calculatorController);
         add(dashboard, BorderLayout.CENTER);
 
-        // ── Status bar ───────────────────────────────────────────────────
         JPanel statusPanel = buildStatusBar();
         add(statusPanel, BorderLayout.SOUTH);
 
-        // ── Wire events ──────────────────────────────────────────────────
         wireEventHandlers();
         subscribeToEventBus();
 
-        // ── Initialization ───────────────────────────────────────────────
         tryAutoLoadLocalData();
     }
-
-    // ── Toolbar builder ──────────────────────────────────────────────────
 
     private JPanel buildToolbar() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, T.PADDING_TOOLBAR));
@@ -95,8 +89,6 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
-    // ── Status bar builder ───────────────────────────────────────────────
-
     private JPanel buildStatusBar() {
         JPanel statusPanel = new JPanel(new BorderLayout());
         statusPanel.setBackground(T.BG_STATUS_BAR);
@@ -107,8 +99,6 @@ public class MainFrame extends JFrame {
         return statusPanel;
     }
 
-    // ── Event wiring: UI controls ────────────────────────────────────────
-
     private void wireEventHandlers() {
         btnDownloadChamps.addActionListener(e -> downloadChampions());
         btnDownloadItems.addActionListener(e -> downloadItems());
@@ -117,18 +107,10 @@ public class MainFrame extends JFrame {
 
     private void subscribeToEventBus() {
         GameEventBus bus = GameEventBus.getInstance();
-
-        // React to new game data arriving
         bus.subscribeGameData(this::onGameDataReceived);
-
-        // React to tracking disconnection
         bus.subscribeDisconnect(this::onTrackingDisconnected);
-
-        // Update status bar from any publisher
         bus.subscribeStatus(this::setStatus);
     }
-
-    // ── Event handlers ───────────────────────────────────────────────────
 
     private void onGameDataReceived(LiveGameData.Root liveData) {
         if (!gameStateManager.hasValidSession()) return;
@@ -156,8 +138,6 @@ public class MainFrame extends JFrame {
         });
     }
 
-    // ── Download operations ──────────────────────────────────────────────
-
     private void downloadChampions() {
         setStatus("Downloading champions framework updates...");
         downloader.downloadChampionsAsync().thenAccept(path -> {
@@ -182,8 +162,6 @@ public class MainFrame extends JFrame {
         });
     }
 
-    // ── Live tracking toggle ─────────────────────────────────────────────
-
     private void toggleLiveTracking() {
         if (!trackingLive) {
             startLiveTracking();
@@ -196,7 +174,6 @@ public class MainFrame extends JFrame {
         setStatus("Opening tactical loop socket...");
 
         gameListener = new LiveGameListener(
-                // onDataReceived
                 jsonPayload -> {
                     try {
                         LiveGameData.Root liveData = parser.parseLiveGameData(jsonPayload);
@@ -207,12 +184,10 @@ public class MainFrame extends JFrame {
                         setStatus("Dashboard calculation gap: " + ex.getMessage());
                     }
                 },
-                // onErrorReceived
                 errorMsg -> GameEventBus.getInstance().publishDisconnect()
         );
 
         gameListener.startListening();
-
         btnToggleLive.setText("Disconnect Radar");
         btnToggleLive.setBackground(T.RED_DANGER);
         trackingLive = true;
@@ -220,16 +195,12 @@ public class MainFrame extends JFrame {
 
     private void stopLiveTracking() {
         gameListener.stopListening();
-
         btnToggleLive.setText("Start Live Tracking");
         btnToggleLive.setBackground(T.GREEN_ACTIVE);
         trackingLive = false;
-
         dashboard.showPlaceholders("Radar offline.");
         setStatus("Live tracking suspended.");
     }
-
-    // ── Utilities ────────────────────────────────────────────────────────
 
     private void setStatus(String text) {
         SwingUtilities.invokeLater(() -> lblStatus.setText(text));
@@ -249,17 +220,15 @@ public class MainFrame extends JFrame {
         if (Files.exists(itemPath)) {
             try {
                 parser.loadItemsData(itemPath.toString());
-            } catch (Exception ignored) { /* optional, will load later */ }
+            } catch (Exception ignored) { }
         }
     }
-
-    // ── Entry point ──────────────────────────────────────────────────────
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) { /* use default */ }
+            } catch (Exception ignored) { }
             new MainFrame().setVisible(true);
         });
     }

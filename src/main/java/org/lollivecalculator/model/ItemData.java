@@ -1,4 +1,4 @@
-package org.lollivecalculator;
+package org.lollivecalculator.model;
 
 import java.util.Map;
 

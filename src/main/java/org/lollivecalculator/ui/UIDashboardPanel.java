@@ -1,4 +1,10 @@
-package org.lollivecalculator;
+package org.lollivecalculator.ui;
+
+import org.lollivecalculator.config.ThemeConfig;
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.LiveGameData;
+import org.lollivecalculator.service.CalculatorController;
+import org.lollivecalculator.service.GameDataParser;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -7,10 +13,6 @@ import java.awt.*;
 /**
  * Manages the central dashboard grid that displays enemy player cards and
  * placeholder slots.
- * <p>
- * Separate responsibility: this panel knows how to lay out enemy cards
- * and fill remaining slots with placeholder cards.
- * </p>
  */
 public class UIDashboardPanel extends JPanel {
 
@@ -19,12 +21,6 @@ public class UIDashboardPanel extends JPanel {
     private final GameDataParser parser;
     private final CalculatorController calculatorController;
 
-    /**
-     * Creates the dashboard panel.
-     *
-     * @param parser              shared game data parser
-     * @param calculatorController damage calculation pipeline
-     */
     public UIDashboardPanel(GameDataParser parser, CalculatorController calculatorController) {
         this.parser = parser;
         this.calculatorController = calculatorController;
@@ -36,7 +32,6 @@ public class UIDashboardPanel extends JPanel {
         showPlaceholders("Application initialized. Awaiting game connection.");
     }
 
-    /** Updates the dashboard with live enemy data. */
     public void updateEnemies(
             LiveGameData.Root liveData,
             String myTeam,
@@ -54,7 +49,6 @@ public class UIDashboardPanel extends JPanel {
             }
         }
 
-        // Fill remaining slots with placeholders
         while (enemiesAdded < T.ENEMY_CARDS) {
             add(UIComponentFactory.createPlaceholderCard("Awaiting Enemy..."));
             enemiesAdded++;
@@ -64,7 +58,6 @@ public class UIDashboardPanel extends JPanel {
         repaint();
     }
 
-    /** Shows placeholder cards with a centered message. */
     public void showPlaceholders(String message) {
         removeAll();
         for (int i = 0; i < T.ENEMY_CARDS; i++) {

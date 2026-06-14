@@ -1,4 +1,4 @@
-package org.lollivecalculator;
+package org.lollivecalculator.network;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -24,7 +24,6 @@ public class LiveGameListener {
     public synchronized void startListening() {
         if (isRunning) return;
         isRunning = true;
-
         scheduler.scheduleAtFixedRate(this::pollGameClient, 0, 1500, TimeUnit.MILLISECONDS);
     }
 

@@ -1,4 +1,7 @@
-package org.lollivecalculator;
+package org.lollivecalculator.service;
+
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.LiveGameData;
 
 /**
  * Manages the current game session state.
@@ -18,7 +21,7 @@ public final class GameStateManager {
     /**
      * Process raw game data and resolve the active player's identity.
      *
-     * @param data  parsed live game data from the API
+     * @param data   parsed live game data from the API
      * @param parser parser with loaded champion/item data
      * @return true if the data was successfully processed
      */
@@ -27,7 +30,6 @@ public final class GameStateManager {
 
         this.currentData = data;
 
-        // Resolve the active player identity
         String myRiotId = data.activePlayer.riotId;
         String myName = data.activePlayer.summonerName;
 

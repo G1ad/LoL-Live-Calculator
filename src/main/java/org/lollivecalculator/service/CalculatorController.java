@@ -1,4 +1,9 @@
-package org.lollivecalculator;
+package org.lollivecalculator.service;
+
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.ItemData;
+import org.lollivecalculator.model.LiveGameData;
+import org.lollivecalculator.util.LoggerUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,11 +35,8 @@ public class CalculatorController {
         List<CalculatedAbilityResult> results = new ArrayList<>();
         if (myStaticChamp == null || myStaticChamp.abilities == null) return results;
 
-        // ESTRAZIONE CRITICA DEL NEMICO: Cerchiamo Corki dentro il file ChampionsJson.
-        // Usiamo un controllo robusto per assicurarci che il nome corrisponda (es. "Corki")
         ChampionData.Champion enemyStatic = parser.getChampion(enemy.championName);
 
-        // Se il parser fallisce, stampiamo un errore gigante in console per capire se il file JSON è corretto
         if (enemyStatic == null || enemyStatic.stats == null) {
             System.err.println("❌ ERROR: Impossibile trovare le statistiche di " + enemy.championName + " nel ChampionsJson!");
             return results;
@@ -45,71 +47,43 @@ public class CalculatorController {
         int myLevel = liveData.activePlayer != null ? liveData.activePlayer.level : 1;
         LoggerUtils.logAttackerStats(myLevel, liveStats);
 
-        // 1. Calcola le resistenze base passando direttamente l'oggetto statico estratto dal JSON, senza ri-cercarlo
         double baseArmor = calculateBaseArmor(enemyStatic, enemy.level);
         double baseMr = calculateBaseMagicResist(enemyStatic, enemy.level);
 
-        // 2. Scansiona l'inventario del target nemico per sommare l'apporto degli oggetti comprati
         InventoryStats inventory = parseEnemyInventory(enemy, parser);
 
-        // 3. Somma l'Armor e la MR derivate unicamente dal calcolo statico del campione specifico + item
         double totalArmor = baseArmor + inventory.bonusArmor;
         double totalMr = baseMr + inventory.bonusMr;
 
-        // 4. Applica la penetrazione/lethality di Ezreal sulle difese totali calcolate del bersaglio
         double effectiveArmor = DamageEngine.calculateEffectiveResistance(totalArmor, "PHYSICAL", liveStats);
         double effectiveMr = DamageEngine.calculateEffectiveResistance(totalMr, "MAGIC", liveStats);
 
-        // LOG 3: Scomposizione dettagliata basata solo sui file statici locali
         LoggerUtils.logTargetDefenses(enemy.level, baseArmor, inventory.bonusArmor, effectiveArmor,
                 baseMr, inventory.bonusMr, effectiveMr, inventory.hasPlatedSteelcaps);
 
-        // 5. Esegue il calcolo dinamico sui singoli slot del kit di abilità di Ezreal dividendo gli effetti
         calculateKitDamages(results, myStaticChamp, liveData, liveStats, myLevel, effectiveArmor, effectiveMr, inventory.hasPlatedSteelcaps);
 
         return results;
     }
 
-    /**
-     * Calcola l'Armor leggendo DIRETTAMENTE dall'oggetto passato dal metodo principale.
-     */
     private double calculateBaseArmor(ChampionData.Champion enemyStatic, int enemyLevel) {
         if (enemyStatic.stats.containsKey("armor")) {
             ChampionData.StatValue armorStat = enemyStatic.stats.get("armor");
-            double growthFactor = calculateGrowthFormula(enemyLevel);
-
-            // Formula di Riot: Flat (Livello 1) + (PerLevel * Moltiplicatore di crescita non lineare)
+            double growthFactor = DamageEngine.calculateGrowthFormula(enemyLevel);
             return Math.floor(armorStat.flat + (armorStat.perLevel * growthFactor));
         }
         return 30.0;
     }
 
-    /**
-     * Calcola la MR leggendo DIRETTAMENTE dall'oggetto passato dal metodo principale.
-     */
     private double calculateBaseMagicResist(ChampionData.Champion enemyStatic, int enemyLevel) {
         if (enemyStatic.stats.containsKey("magicResistance")) {
             ChampionData.StatValue mrStat = enemyStatic.stats.get("magicResistance");
-            double growthFactor = calculateGrowthFormula(enemyLevel);
-
+            double growthFactor = DamageEngine.calculateGrowthFormula(enemyLevel);
             return Math.floor(mrStat.flat + (mrStat.perLevel * growthFactor));
         }
         return 30.0;
     }
 
-    /**
-     * Official LoL Wiki growth formula:
-     * Statistic = base + growth × (level - 1) × (0.7025 + 0.0175 × (level - 1))
-     * This returns the growth factor: (level - 1) × (0.7025 + 0.0175 × (level - 1))
-     */
-    private double calculateGrowthFormula(int level) {
-        double levelUps = level - 1;
-        return levelUps * (0.7025 + 0.0175 * levelUps);
-    }
-
-    /**
-     * Analizza gli oggetti del nemico sommandone i valori difensivi statici.
-     */
     private InventoryStats parseEnemyInventory(LiveGameData.LivePlayer enemy, GameDataParser parser) {
         InventoryStats inv = new InventoryStats();
         if (enemy.items == null) return inv;
@@ -132,9 +106,6 @@ public class CalculatorController {
         return inv;
     }
 
-    /**
-     * Elabora il kit del giocatore suddividendo ogni abilità nei rispettivi sotto-effetti JSON autonomi.
-     */
     private void calculateKitDamages(
             List<CalculatedAbilityResult> results,
             ChampionData.Champion myStaticChamp,

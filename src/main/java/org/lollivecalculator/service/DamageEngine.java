@@ -1,10 +1,12 @@
-package org.lollivecalculator;
+package org.lollivecalculator.service;
+
+import org.lollivecalculator.model.ChampionData;
+import org.lollivecalculator.model.LiveGameData;
 
 import java.util.List;
 
 public class DamageEngine {
 
-    // Cambiato il ritorno per elaborare un SINGOLO effetto specifico alla volta, non l'intera lista indiscriminatamente
     public static double calculatePreMitigationDamage(
             ChampionData.Effect specificEffect,
             int liveAbilityLevel,
@@ -73,14 +75,11 @@ public class DamageEngine {
         if (unit.isEmpty()) {
             accumulator.addBaseDamage(valueAtRank);
         } else if (unit.contains("% AD")) {
-            // Usa l'AD Totale live (es. per la Q di Ezreal)
             accumulator.addScalingDamage((valueAtRank / 100.0) * liveStats.attackDamage);
         } else if (unit.contains("% AP")) {
             accumulator.addScalingDamage((valueAtRank / 100.0) * liveStats.abilityPower);
         } else if (unit.contains("% bonus AD")) {
-            // Calcola l'AD Base effettivo del campione al livello attuale
             double baseAd = calculateBaseAttackDamage(myStaticChamp, myLevel);
-            // AD Bonus = AD Totale - AD Base Naturale
             double bonusAd = Math.max(0.0, liveStats.attackDamage - baseAd);
             accumulator.addScalingDamage((valueAtRank / 100.0) * bonusAd);
         } else {
@@ -88,14 +87,10 @@ public class DamageEngine {
         }
     }
 
-    /**
-     * Ripristinato il calcolo corretto dell'AD Naturale del campione basato sul livello.
-     */
     private static double calculateBaseAttackDamage(ChampionData.Champion myStaticChamp, int myLevel) {
         if (myStaticChamp != null && myStaticChamp.stats != null && myStaticChamp.stats.containsKey("attackDamage")) {
             ChampionData.StatValue adStat = myStaticChamp.stats.get("attackDamage");
             double growthFactor = calculateGrowthFormula(myLevel);
-            // Ritorna l'AD base corretto per il livello attuale (es. a livello 11 considererà la crescita)
             return adStat.flat + (adStat.perLevel * growthFactor);
         }
         return 60.0;
@@ -104,9 +99,8 @@ public class DamageEngine {
     /**
      * Official LoL Wiki growth formula:
      * Statistic = base + growth × (level - 1) × (0.7025 + 0.0175 × (level - 1))
-     * This returns the growth factor: (level - 1) × (0.7025 + 0.0175 × (level - 1))
      */
-    private static double calculateGrowthFormula(int level) {
+    public static double calculateGrowthFormula(int level) {
         double levelUps = level - 1;
         return levelUps * (0.7025 + 0.0175 * levelUps);
     }
@@ -115,17 +109,10 @@ public class DamageEngine {
         double effective = baseResist;
 
         if ("PHYSICAL".equals(damageType)) {
-            // Order of operations per LoL Wiki:
-            // 1. Percentage armor penetration (applied to total armor)
-            // 2. Flat armor penetration (lethality)
-            // Note: physicalLethality and armorPenetrationFlat are the same stat in the API
             double percentPenFactor = parsePenetrationPercent(myStats.armorPenetrationPercent);
             effective = (effective * (1.0 - percentPenFactor)) - myStats.physicalLethality;
 
         } else if ("MAGIC".equals(damageType)) {
-            // Order of operations per LoL Wiki:
-            // 1. Percentage magic penetration (applied to total MR)
-            // 2. Flat magic penetration
             double percentPenFactor = parsePenetrationPercent(myStats.magicPenetrationPercent);
             effective = (effective * (1.0 - percentPenFactor)) - myStats.magicPenetrationFlat;
         }

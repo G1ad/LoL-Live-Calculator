@@ -1,15 +1,13 @@
-package org.lollivecalculator;
+package org.lollivecalculator.ui;
+
+import org.lollivecalculator.config.ThemeConfig;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 /**
  * Factory pattern for creating consistently styled Swing components.
- * <p>
- * All methods return pre-configured components using the application's
- * {@link ThemeConfig} singleton. Enables easy global style changes.
- * </p>
+ * All methods return pre-configured components using ThemeConfig.
  */
 public final class UIComponentFactory {
 
@@ -19,12 +17,10 @@ public final class UIComponentFactory {
 
     // ── Buttons ──────────────────────────────────────────────────────────
 
-    /** Creates a button with the standard dark style. */
     public static JButton createButton(String text) {
         return createButton(text, T.BG_BUTTON);
     }
 
-    /** Creates a button with a custom background color. */
     public static JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(T.FONT_BUTTON);
@@ -36,7 +32,6 @@ public final class UIComponentFactory {
         return btn;
     }
 
-    /** Creates the "Start Live Tracking" (green) button. */
     public static JButton createToggleLiveButton() {
         return createButton("Start Live Tracking", T.GREEN_ACTIVE);
     }
@@ -62,7 +57,6 @@ public final class UIComponentFactory {
         return createLabel(text, T.FONT_STATUS, T.TEXT_SECONDARY);
     }
 
-    /** Creates a full-width stat display: label on left, value on right. */
     public static JPanel createStatLine(String label, String value) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(T.BG_PANEL);
@@ -70,7 +64,6 @@ public final class UIComponentFactory {
 
         JLabel lblLabel = createLabel(label, T.FONT_STAT_LABEL, T.TEXT_SECONDARY);
         JLabel lblVal  = createLabel(value, T.FONT_STAT_VALUE, T.TEXT_ACCENT);
-
         panel.add(lblLabel, BorderLayout.WEST);
         panel.add(lblVal, BorderLayout.EAST);
         return panel;
@@ -78,7 +71,6 @@ public final class UIComponentFactory {
 
     // ── Panels ───────────────────────────────────────────────────────────
 
-    /** Creates a panel with the standard dark background. */
     public static JPanel createPanel() {
         return createPanel(T.BG_PANEL);
     }
@@ -89,7 +81,6 @@ public final class UIComponentFactory {
         return p;
     }
 
-    /** Creates a placeholder card (used when no enemies are detected). */
     public static JPanel createPlaceholderCard(String message) {
         JPanel card = new JPanel(new GridBagLayout());
         card.setBackground(T.BG_PANEL);
@@ -99,9 +90,8 @@ public final class UIComponentFactory {
         return card;
     }
 
-    // ── Bars & Tables ────────────────────────────────────────────────────
+    // ── Scrolling ────────────────────────────────────────────────────────
 
-    /** Creates a scroll pane themed for the application. */
     public static JScrollPane createScrollPane(Component view) {
         JScrollPane sp = new JScrollPane(view);
         sp.setBorder(null);

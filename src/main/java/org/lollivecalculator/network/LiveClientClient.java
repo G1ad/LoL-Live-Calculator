@@ -1,4 +1,4 @@
-package org.lollivecalculator;
+package org.lollivecalculator.network;
 
 import java.net.URI;
 import java.net.http.HttpClient;

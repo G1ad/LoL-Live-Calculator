@@ -1,4 +1,6 @@
-package org.lollivecalculator;
+package org.lollivecalculator.event;
+
+import org.lollivecalculator.model.LiveGameData;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,7 +16,6 @@ import java.util.function.Consumer;
  */
 public final class GameEventBus {
 
-    // ── Singleton ────────────────────────────────────────────────────────
     private static final GameEventBus INSTANCE = new GameEventBus();
 
     private final List<Consumer<LiveGameData.Root>> gameDataListeners = new CopyOnWriteArrayList<>();
@@ -42,7 +43,7 @@ public final class GameEventBus {
         }
     }
 
-    // ── Disconnect (tracking stopped) events ─────────────────────────────
+    // ── Disconnect events ────────────────────────────────────────────────
     public void subscribeDisconnect(Runnable listener) {
         disconnectListeners.add(listener);
     }

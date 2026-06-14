@@ -1,4 +1,4 @@
-package org.lollivecalculator;
+package org.lollivecalculator.model;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +39,7 @@ public class ChampionData {
         public String damageType;
         public String blurb;
         public String castTime;
-        public String spellEffects; // EXPOSING THIS JSON FIELD FROM THE DATASET
+        public String spellEffects;
         public CooldownBlock cooldown;
         public List<Effect> effects;
     }
