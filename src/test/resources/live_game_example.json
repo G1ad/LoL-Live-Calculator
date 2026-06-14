@@ -1,0 +1,334 @@
+{
+	"activePlayer": {
+		"abilities": {
+			"E": {
+				"abilityLevel": 0,
+				"displayName": "Arcane Shift",
+				"id": "EzrealE",
+				"rawDescription": "GeneratedTip_Spell_EzrealE_Description",
+				"rawDisplayName": "GeneratedTip_Spell_EzrealE_DisplayName"
+			},
+			"Passive": {
+				"displayName": "Rising Spell Force",
+				"id": "EzrealPassive",
+				"rawDescription": "GeneratedTip_Passive_EzrealPassive_Description",
+				"rawDisplayName": "GeneratedTip_Passive_EzrealPassive_DisplayName"
+			},
+			"Q": {
+				"abilityLevel": 0,
+				"displayName": "Mystic Shot",
+				"id": "EzrealQ",
+				"rawDescription": "GeneratedTip_Spell_EzrealQ_Description",
+				"rawDisplayName": "GeneratedTip_Spell_EzrealQ_DisplayName"
+			},
+			"R": {
+				"abilityLevel": 0,
+				"displayName": "Trueshot Barrage",
+				"id": "EzrealR",
+				"rawDescription": "GeneratedTip_Spell_EzrealR_Description",
+				"rawDisplayName": "GeneratedTip_Spell_EzrealR_DisplayName"
+			},
+			"W": {
+				"abilityLevel": 0,
+				"displayName": "Essence Flux",
+				"id": "EzrealW",
+				"rawDescription": "GeneratedTip_Spell_EzrealW_Description",
+				"rawDisplayName": "GeneratedTip_Spell_EzrealW_DisplayName"
+			}
+		},
+		"championStats": {
+			"abilityHaste": 0.0,
+			"abilityPower": 0.0,
+			"armor": 24.0,
+			"armorPenetrationFlat": 0.0,
+			"armorPenetrationPercent": 1.0,
+			"attackDamage": 65.4000015258789,
+			"attackRange": 550.0,
+			"attackSpeed": 0.6875,
+			"bonusArmorPenetrationPercent": 1.0,
+			"bonusMagicPenetrationPercent": 1.0,
+			"critChance": 0.0,
+			"critDamage": 200.0,
+			"currentHealth": 600.0,
+			"healShieldPower": 0.0,
+			"healthRegenRate": 0.800000011920929,
+			"lifeSteal": 0.0,
+			"magicLethality": 0.0,
+			"magicPenetrationFlat": 0.0,
+			"magicPenetrationPercent": 1.0,
+			"magicResist": 30.0,
+			"maxHealth": 600.0,
+			"moveSpeed": 717.5,
+			"omnivamp": 0.0,
+			"physicalLethality": 0.0,
+			"physicalVamp": 0.0,
+			"resourceMax": 375.0,
+			"resourceRegenRate": 1.7000000476837159,
+			"resourceType": "MANA",
+			"resourceValue": 375.0,
+			"spellVamp": 0.0,
+			"tenacity": 5.0
+		},
+		"currentGold": 954.9283447265625,
+		"fullRunes": {
+			"generalRunes": [
+				{
+					"displayName": "Hail of Blades",
+					"id": 9923,
+					"rawDescription": "perk_tooltip_HailOfBlades",
+					"rawDisplayName": "perk_displayname_HailOfBlades"
+				},
+				{
+					"displayName": "Taste of Blood",
+					"id": 8139,
+					"rawDescription": "perk_tooltip_TasteOfBlood",
+					"rawDisplayName": "perk_displayname_TasteOfBlood"
+				},
+				{
+					"displayName": "Grisly Mementos",
+					"id": 8140,
+					"rawDescription": "perk_tooltip_GrislyMementos",
+					"rawDisplayName": "perk_displayname_GrislyMementos"
+				},
+				{
+					"displayName": "Treasure Hunter",
+					"id": 8135,
+					"rawDescription": "perk_tooltip_TreasureHunter",
+					"rawDisplayName": "perk_displayname_TreasureHunter"
+				},
+				{
+					"displayName": "Triumph",
+					"id": 9111,
+					"rawDescription": "perk_tooltip_9111",
+					"rawDisplayName": "perk_displayname_9111"
+				},
+				{
+					"displayName": "Coup de Grace",
+					"id": 8014,
+					"rawDescription": "perk_tooltip_CoupDeGrace",
+					"rawDisplayName": "perk_displayname_CoupDeGrace"
+				}
+			],
+			"keystone": {
+				"displayName": "Hail of Blades",
+				"id": 9923,
+				"rawDescription": "perk_tooltip_HailOfBlades",
+				"rawDisplayName": "perk_displayname_HailOfBlades"
+			},
+			"primaryRuneTree": {
+				"displayName": "Domination",
+				"id": 8100,
+				"rawDescription": "perkstyle_tooltip_7200",
+				"rawDisplayName": "perkstyle_displayname_7200"
+			},
+			"secondaryRuneTree": {
+				"displayName": "Precision",
+				"id": 8000,
+				"rawDescription": "perkstyle_tooltip_7201",
+				"rawDisplayName": "perkstyle_displayname_7201"
+			},
+			"statRunes": [
+				{
+					"id": 5005,
+					"rawDescription": "perk_tooltip_StatModAttackSpeed"
+				},
+				{
+					"id": 5008,
+					"rawDescription": "perk_tooltip_StatModAdaptive"
+				},
+				{
+					"id": 5013,
+					"rawDescription": "perk_tooltip_StatModTenacity"
+				}
+			]
+		},
+		"level": 1,
+		"riotId": "fakeid#example",
+		"riotIdGameName": "fakeid",
+		"riotIdTagLine": "example",
+		"summonerName": "fakeid#example",
+		"teamRelativeColors": true
+	},
+	"allPlayers": [
+		{
+			"championName": "Ezreal",
+			"isBot": false,
+			"isDead": false,
+			"items": [],
+			"level": 1,
+			"position": "NONE",
+			"rawChampionName": "game_character_displayname_Ezreal",
+			"rawSkinName": "game_character_skin_displayname_Ezreal_9",
+			"respawnTimer": 0.0,
+			"riotId": "fakeid#example",
+			"riotIdGameName": "fakeid",
+			"riotIdTagLine": "example",
+			"runes": {
+				"keystone": {
+					"displayName": "Hail of Blades",
+					"id": 9923,
+					"rawDescription": "perk_tooltip_HailOfBlades",
+					"rawDisplayName": "perk_displayname_HailOfBlades"
+				},
+				"primaryRuneTree": {
+					"displayName": "Domination",
+					"id": 8100,
+					"rawDescription": "perkstyle_tooltip_7200",
+					"rawDisplayName": "perkstyle_displayname_7200"
+				},
+				"secondaryRuneTree": {
+					"displayName": "Precision",
+					"id": 8000,
+					"rawDescription": "perkstyle_tooltip_7201",
+					"rawDisplayName": "perkstyle_displayname_7201"
+				}
+			},
+			"scores": {
+				"assists": 0,
+				"creepScore": 0,
+				"deaths": 0,
+				"kills": 0,
+				"wardScore": 0.0
+			},
+			"skinID": 9,
+			"skinName": "Arcade Ezreal",
+			"summonerName": "fakeid#example",
+			"summonerSpells": {
+				"summonerSpellOne": {
+					"displayName": "Flash",
+					"rawDescription": "GeneratedTip_SummonerSpell_SummonerFlash_Description",
+					"rawDisplayName": "GeneratedTip_SummonerSpell_SummonerFlash_DisplayName"
+				},
+				"summonerSpellTwo": {
+					"displayName": "Ignite",
+					"rawDescription": "GeneratedTip_SummonerSpell_SummonerDot_Description",
+					"rawDisplayName": "GeneratedTip_SummonerSpell_SummonerDot_DisplayName"
+				}
+			},
+			"team": "ORDER"
+		},
+		{
+			"championName": "Seraphine",
+			"isBot": true,
+			"isDead": false,
+			"items": [
+				{
+					"canUse": false,
+					"consumable": false,
+					"count": 1,
+					"displayName": "World Atlas",
+					"itemID": 3865,
+					"price": 400,
+					"rawDescription": "GeneratedTip_Item_3865_Description",
+					"rawDisplayName": "Item_3865_Name",
+					"slot": 0
+				},
+				{
+					"canUse": false,
+					"consumable": false,
+					"count": 1,
+					"displayName": "Ruby Crystal",
+					"itemID": 1028,
+					"price": 400,
+					"rawDescription": "GeneratedTip_Item_1028_Description",
+					"rawDisplayName": "Item_1028_Name",
+					"slot": 1
+				},
+				{
+					"canUse": false,
+					"consumable": false,
+					"count": 1,
+					"displayName": "Faerie Charm",
+					"itemID": 1004,
+					"price": 200,
+					"rawDescription": "GeneratedTip_Item_1004_Description",
+					"rawDisplayName": "Item_1004_Name",
+					"slot": 2
+				},
+				{
+					"canUse": true,
+					"consumable": false,
+					"count": 1,
+					"displayName": "Stealth Ward",
+					"itemID": 3340,
+					"price": 0,
+					"rawDescription": "GeneratedTip_Item_3340_Description",
+					"rawDisplayName": "Item_3340_Name",
+					"slot": 6
+				}
+			],
+			"level": 5,
+			"position": "UTILITY",
+			"rawChampionName": "Character_Seraphine_Name",
+			"rawSkinName": "game_character_displayname_Seraphine",
+			"respawnTimer": 0.0,
+			"riotId": "Seraphine#BOT",
+			"riotIdGameName": "Seraphine",
+			"riotIdTagLine": "BOT",
+			"runes": {
+				"keystone": {
+					"displayName": "Arcane Comet",
+					"id": 8229,
+					"rawDescription": "perk_tooltip_ArcaneComet",
+					"rawDisplayName": "perk_displayname_ArcaneComet"
+				},
+				"primaryRuneTree": {
+					"displayName": "Sorcery",
+					"id": 8200,
+					"rawDescription": "perkstyle_tooltip_7202",
+					"rawDisplayName": "perkstyle_displayname_7202"
+				},
+				"secondaryRuneTree": {
+					"displayName": "Domination",
+					"id": 8100,
+					"rawDescription": "perkstyle_tooltip_7200",
+					"rawDisplayName": "perkstyle_displayname_7200"
+				}
+			},
+			"scores": {
+				"assists": 0,
+				"creepScore": 30,
+				"deaths": 0,
+				"kills": 0,
+				"wardScore": 0.0
+			},
+			"skinID": 0,
+			"skinName": "Seraphine",
+			"summonerName": "Seraphine Bot",
+			"summonerSpells": {
+				"summonerSpellOne": {
+					"displayName": "Flash",
+					"rawDescription": "GeneratedTip_SummonerSpell_SummonerFlash_Description",
+					"rawDisplayName": "GeneratedTip_SummonerSpell_SummonerFlash_DisplayName"
+				},
+				"summonerSpellTwo": {
+					"displayName": "Heal",
+					"rawDescription": "GeneratedTip_SummonerSpell_SummonerHeal_Description",
+					"rawDisplayName": "GeneratedTip_SummonerSpell_SummonerHeal_DisplayName"
+				}
+			},
+			"team": "CHAOS"
+		}
+	],
+	"events": {
+		"Events": [
+			{
+				"EventID": 0,
+				"EventName": "GameStart",
+				"EventTime": 0.029803700745105745
+			},
+			{
+				"EventID": 1,
+				"EventName": "MinionsSpawning",
+				"EventTime": 30.059528350830079
+			}
+		]
+	},
+	"gameData": {
+		"gameMode": "PRACTICETOOL",
+		"gameTime": 288.0409240722656,
+		"mapName": "Map11",
+		"mapNumber": 11,
+		"mapTerrain": "Default"
+	}
+}

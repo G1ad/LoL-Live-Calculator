@@ -47,6 +47,7 @@ public class LiveGameData {
         public String championName;
         public int level;
         public String team;
+        public boolean isBot;
         public boolean isDead;
         public List<LiveItem> items;
         public String summonerName;

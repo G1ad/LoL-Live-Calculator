@@ -41,11 +41,11 @@ public class MainFrame extends JFrame {
     private final CalculatorController calculatorController;
     private final GameStateManager gameStateManager;
 
-    private final JButton btnDownloadChamps;
-    private final JButton btnDownloadItems;
-    private final JButton btnToggleLive;
-    private final JLabel lblStatus;
-    private final UIDashboardPanel dashboard;
+    private JButton btnDownloadChamps;
+    private JButton btnDownloadItems;
+    private JButton btnToggleLive;
+    private JLabel lblStatus;
+    private UIDashboardPanel dashboard;
 
     private LiveGameListener gameListener;
     private boolean trackingLive = false;
@@ -63,41 +63,34 @@ public class MainFrame extends JFrame {
         getContentPane().setBackground(T.BG_DARK);
         setLayout(new BorderLayout(T.GAP_HORIZONTAL, T.GAP_VERTICAL));
 
-        add(buildToolbar(), BorderLayout.NORTH);
+        // Build UI components directly in constructor
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, T.PADDING_TOOLBAR));
+        toolbar.setBackground(T.BG_TOOLBAR);
+
+        this.btnDownloadChamps = UIComponentFactory.createButton("Update Champions");
+        this.btnDownloadItems  = UIComponentFactory.createButton("Update Items");
+        this.btnToggleLive     = UIComponentFactory.createToggleLiveButton();
+
+        toolbar.add(btnDownloadChamps);
+        toolbar.add(btnDownloadItems);
+        toolbar.add(btnToggleLive);
+        add(toolbar, BorderLayout.NORTH);
 
         this.dashboard = new UIDashboardPanel(parser, calculatorController);
         add(dashboard, BorderLayout.CENTER);
 
-        add(buildStatusBar(), BorderLayout.SOUTH);
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setBackground(T.BG_STATUS_BAR);
+        statusPanel.setBorder(new EmptyBorder(T.PADDING_SMALL, 20, T.PADDING_SMALL, 20));
+
+        this.lblStatus = UIComponentFactory.createStatusLabel("System Ready.");
+        statusPanel.add(lblStatus, BorderLayout.WEST);
+        add(statusPanel, BorderLayout.SOUTH);
 
         wireEventHandlers();
         subscribeToEventBus();
 
         tryAutoLoadLocalData();
-    }
-
-    private JPanel buildToolbar() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, T.PADDING_TOOLBAR));
-        panel.setBackground(T.BG_TOOLBAR);
-
-        btnDownloadChamps = UIComponentFactory.createButton("Update Champions");
-        btnDownloadItems  = UIComponentFactory.createButton("Update Items");
-        btnToggleLive     = UIComponentFactory.createToggleLiveButton();
-
-        panel.add(btnDownloadChamps);
-        panel.add(btnDownloadItems);
-        panel.add(btnToggleLive);
-        return panel;
-    }
-
-    private JPanel buildStatusBar() {
-        JPanel statusPanel = new JPanel(new BorderLayout());
-        statusPanel.setBackground(T.BG_STATUS_BAR);
-        statusPanel.setBorder(new EmptyBorder(T.PADDING_SMALL, 20, T.PADDING_SMALL, 20));
-
-        lblStatus = UIComponentFactory.createStatusLabel("System Ready.");
-        statusPanel.add(lblStatus, BorderLayout.WEST);
-        return statusPanel;
     }
 
     private void wireEventHandlers() {

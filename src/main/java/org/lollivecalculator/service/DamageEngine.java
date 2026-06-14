@@ -6,53 +6,19 @@ import org.lollivecalculator.model.LiveGameData;
 import java.util.List;
 
 /**
- * Default implementation of {@link IDamageEngine}.
+ * Static damage calculation engine matching official LoL Wiki formulas.
  * <p>
- * Static methods (`calculatePreMitigationDamage`, etc.) are the primary
- * API used by {@link CalculatorController}. The class also implements
- * {@link IDamageEngine} for testability / interface-based access.
+ * All methods are static for direct calling. {@link IDamageEngine} exists
+ * as a documentation interface only — {@link CalculatorController} and
+ * {@code EnemyCardPanel} call these static methods directly.
  * </p>
  */
-public final class DamageEngine implements IDamageEngine {
-
-    private static final DamageEngine INSTANCE = new DamageEngine();
+public final class DamageEngine {
 
     private DamageEngine() { }
 
-    /** Returns the singleton instance for interface-based access. */
-    public static IDamageEngine getInstance() {
-        return INSTANCE;
-    }
-
-    // ── IDamageEngine interface ──────────────────────────────────────────
-
-    @Override
-    public double calculatePreMitigationDamage(
-            ChampionData.Effect specificEffect,
-            int liveAbilityLevel,
-            LiveGameData.ChampionStats liveStats,
-            ChampionData.Champion myStaticChamp,
-            int myLevel) {
-        return calculatePreMitigationDamage(specificEffect, liveAbilityLevel, liveStats, myStaticChamp, myLevel);
-    }
-
-    @Override
-    public double calculateEffectiveResistance(double baseResist, String damageType, LiveGameData.ChampionStats myStats) {
-        return calculateEffectiveResistance(baseResist, damageType, myStats);
-    }
-
-    @Override
-    public double calculatePostMitigationDamage(double preMitigationDmg, double effectiveResist) {
-        return calculatePostMitigationDamage(preMitigationDmg, effectiveResist);
-    }
-
-    @Override
-    public double calculateGrowthFormula(int level) {
-        return calculateGrowthFormula(level);
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
-    //  PUBLIC STATIC API  (called by CalculatorController, EnemyCardPanel)
+    //  PUBLIC STATIC API
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
@@ -81,7 +47,6 @@ public final class DamageEngine implements IDamageEngine {
 
         if (!accumulator.hasCalculatedStats) return -1.0;
 
-        // Truncate to match Riot's in-game display
         return truncate(accumulator.baseDamage + accumulator.scalingDamage);
     }
 
