@@ -8,8 +8,7 @@ import javax.swing.*;
  * Application entry point.
  * <p>
  * Separated from {@link MainFrame} so the main method doesn't tie
- * bootstrap logic to Swing lifecycle. Handles JVM-level setup
- * (look & feel, splash screen, etc.) before delegating to the UI.
+ * bootstrap logic to Swing lifecycle.
  * </p>
  */
 public final class LoLLiveCalculatorApp {
@@ -17,11 +16,18 @@ public final class LoLLiveCalculatorApp {
     private LoLLiveCalculatorApp() { }
 
     public static void main(String[] args) {
-        // Set system look & feel before creating any Swing components
+        // Use Nimbus L&F (cross-platform) instead of Windows system L&F.
+        // Windows 11 dark theme overrides our button background/foreground
+        // colors, making white text invisible on white buttons.
         try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
         } catch (Exception ignored) {
-            // Fall back to default (Metal / Nimbus)
+            // Fall back to Metal (default) — still respects our custom colors
         }
 
         // Launch the main window on the Event Dispatch Thread

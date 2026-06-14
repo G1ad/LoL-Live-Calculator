@@ -204,20 +204,31 @@ public class MainFrame extends JFrame {
     }
 
     private void tryAutoLoadLocalData() {
+        // Try the configured path first (e.g. data/champions.json),
+        // fall back to the legacy root path (champions.json)
         Path champPath = CFG.getChampionsLocalPath();
+        if (!Files.exists(champPath)) {
+            champPath = Path.of("champions.json");
+        }
         if (Files.exists(champPath)) {
             try {
                 parser.loadChampionsData(champPath);
-                setStatus("Auto-loaded data for " + parser.getLoadedChampionsCount() + " champions.");
+                setStatus("Loaded " + parser.getLoadedChampionsCount() + " champions from " + champPath.getFileName());
             } catch (Exception e) {
-                setStatus("Failed to auto-load champions: " + e.getMessage());
+                setStatus("Failed to load champions: " + e.getMessage());
             }
+        } else {
+            setStatus("No champion data found. Click 'Update Champions' to download.");
         }
+
         Path itemPath = CFG.getItemsLocalPath();
+        if (!Files.exists(itemPath)) {
+            itemPath = Path.of("items.json");
+        }
         if (Files.exists(itemPath)) {
             try {
                 parser.loadItemsData(itemPath);
-            } catch (Exception ignored) { /* optional, will load later */ }
+            } catch (Exception ignored) { /* optional */ }
         }
     }
 }
