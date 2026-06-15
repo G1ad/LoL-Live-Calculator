@@ -21,25 +21,56 @@ public class LiveClientClient {
 
     public LiveClientClient() {
         this.liveDataUrl = CFG.getLolApiUrl();
-        this.httpClient = HttpClient.newBuilder()
-                .sslContext(createInsecureSslContext())
-                .build();
+        this.httpClient = buildPermissiveHttpClient();
     }
 
-    private static SSLContext createInsecureSslContext() {
+    /**
+     * Builds an HttpClient that bypasses SSL certificate verification and
+     * hostname checking.
+     * <p>
+     * The LoL Live Client API uses a self-signed certificate on 127.0.0.1:2999.
+     * Without both of these bypasses, Java would reject the connection with
+     * either an SSLHandshakeException (untrusted cert) or an
+     * SSLPeerUnverifiedException (hostname mismatch).
+     * </p>
+     */
+    private static HttpClient buildPermissiveHttpClient() {
         try {
+            // Step 1: Create SSLContext that trusts ALL certificates
             TrustManager[] trustAllCerts = new TrustManager[]{
                     new X509TrustManager() {
-                        public X509Certificate[] getAcceptedIssuers() { return null; }
-                        public void checkClientTrusted(X509Certificate[] certs, String authType) { }
-                        public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return new X509Certificate[0];
+                        }
+
+                        public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                            // Trust all client certificates
+                        }
+
+                        public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                            // Trust all server certificates
+                        }
                     }
             };
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            return sc;
+
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            // Step 2: Disable hostname verification via SSLParameters.
+            // This bypasses the hostname check that would otherwise fail
+            // when the self-signed cert's CN doesn't match "127.0.0.1".
+            // HttpClient.Builder does NOT have a hostnameVerifier() method
+            // in earlier JDK versions; the portable way is SSLParameters.
+            javax.net.ssl.SSLParameters params = sslContext.getDefaultSSLParameters();
+            params.setEndpointIdentificationAlgorithm(null);  // Disable hostname check
+
+            return HttpClient.newBuilder()
+                    .sslContext(sslContext)
+                    .sslParameters(params)
+                    .build();
+
         } catch (Exception e) {
-            throw new RuntimeException("Failed to configure insecure SSL context", e);
+            throw new RuntimeException("Failed to create permissive HTTP client", e);
         }
     }
 
