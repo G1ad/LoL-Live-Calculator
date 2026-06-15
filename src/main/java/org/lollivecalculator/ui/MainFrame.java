@@ -210,26 +210,40 @@ public class MainFrame extends JFrame {
     }
 
     private void startLiveTracking() {
-        // Ensure data is loaded first
         if (parser.getLoadedChampionsCount() == 0) {
             setStatus("No champion data — click 'Update Champions' first");
             return;
         }
 
-        setStatus("Connecting to game client at " + CFG.getLolApiUrl() + " ...");
+        setStatus("Connecting to " + CFG.getLolApiUrl() + " ...");
 
         gameListener = new LiveGameListener(
+                // onDataReceived — success
                 json -> {
                     try {
                         LiveGameData.Root data = parser.parseLiveGameData(json);
                         if (data != null && gameStateManager.processGameData(data, parser)) {
+                            System.out.println(" ✅ Live data received — connected to game");
                             GameEventBus.getInstance().publishGameData(data);
                         }
                     } catch (Exception ex) {
                         setStatus("Parse error: " + ex.getMessage());
+                        System.out.println(" [ERROR] " + ex.getMessage());
+                        ex.printStackTrace();
                     }
                 },
-                err -> GameEventBus.getInstance().publishDisconnect()
+                // onErrorReceived — failure (shows the actual error)
+                errorMsg -> {
+                    System.out.println(" [LIVE] Connection failed: " + errorMsg);
+                    // Don't show generic "Searching..." — show the real error
+                    SwingUtilities.invokeLater(() -> {
+                        if (trackingLive) {
+                            setStatus("Connection failed: " + (errorMsg != null && errorMsg.length() > 60
+                                    ? errorMsg.substring(0, 60) + "..."
+                                    : errorMsg));
+                        }
+                    });
+                }
         );
 
         gameListener.startListening();

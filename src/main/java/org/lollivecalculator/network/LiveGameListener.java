@@ -1,12 +1,12 @@
 package org.lollivecalculator.network;
 
-import org.lollivecalculator.config.AppConfig;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+
+import org.lollivecalculator.config.AppConfig;
 
 /**
  * Polls the LoL Live Client API at a configurable interval.
@@ -21,7 +21,7 @@ public class LiveGameListener {
 
     private static final AppConfig CFG = AppConfig.getInstance();
 
-    private final LiveClientClient client;
+    private final LiveApiClient client;
     private final ScheduledExecutorService scheduler;
     private final Consumer<String> onDataReceived;
     private final Consumer<String> onErrorReceived;
@@ -30,7 +30,7 @@ public class LiveGameListener {
     private boolean isRunning;
 
     public LiveGameListener(Consumer<String> onDataReceived, Consumer<String> onErrorReceived) {
-        this.client = new LiveClientClient();
+        this.client = new LiveApiClient();
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "LiveGameListener");
             t.setDaemon(true);
@@ -56,7 +56,7 @@ public class LiveGameListener {
     private void pollGameClient() {
         if (!isRunning) return;
 
-        client.fetchLiveGameDataAsync()
+        client.fetchGameDataAsync()
                 .thenAccept(data -> {
                     // Success — reset backoff to normal interval
                     currentBackoffMs.set(CFG.getPollIntervalMs());
